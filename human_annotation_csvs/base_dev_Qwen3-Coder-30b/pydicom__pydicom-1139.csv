@@ -1,0 +1,29 @@
+Step,Redundant Y/N,Comments
+1,N,
+2,N,
+3,N,
+4,Y,Inefficient Search
+5,Y,Inefficient Search
+6,N,
+7,N
+8,Y,Redundant grep
+9,N
+10,N,
+11,N,
+12,Y,Redundant grep
+13,Y,Overlapping Read
+14,N,
+15,N,
+16,Y,Overlapping Read
+17,N,
+18,Y,Overlapping Read
+19,N,
+20,Y,Unnecesseary View
+21,N,
+22,N,
+23,N,
+24,N,
+25,Y,Re-testing for TestPersonName
+26,N,
+27,Y,"Re-testing for stuff covered in previous tests like test_personname.py, etc"
+28,N,

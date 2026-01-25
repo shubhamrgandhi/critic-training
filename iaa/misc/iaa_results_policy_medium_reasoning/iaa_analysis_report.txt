@@ -1,0 +1,132 @@
+Found 4 CSV files to analyze
+
+============================================================
+Analyzing: pvlib__pvlib-python-1854
+============================================================
+
+Total Steps: 38
+Human marked as redundant: 14
+Judge marked as redundant: 5
+
+Agreement Rate: 71.05%
+Cohen's Kappa: 0.282
+
+Confusion Matrix (Human as ground truth):
+  True Negatives (TN):  23 (both say not redundant)
+  False Positives (FP): 1 (judge says redundant, human says no)
+  False Negatives (FN): 10 (judge says not redundant, human says yes)
+  True Positives (TP):  4 (both say redundant)
+
+Performance Metrics:
+  Precision: 0.800
+  Recall:    0.286
+  F1 Score:  0.421
+
+False Positives (Steps where judge incorrectly marked as redundant):
+[9]
+
+False Negatives (Steps where judge missed redundancy):
+[4, 16, 19, 25, 28, 29, 30, 31, 36, 37]
+
+============================================================
+Analyzing: pvlib__pvlib-python-1072
+============================================================
+
+Total Steps: 31
+Human marked as redundant: 5
+Judge marked as redundant: 1
+
+Agreement Rate: 87.10%
+Cohen's Kappa: 0.295
+
+Confusion Matrix (Human as ground truth):
+  True Negatives (TN):  26 (both say not redundant)
+  False Positives (FP): 0 (judge says redundant, human says no)
+  False Negatives (FN): 4 (judge says not redundant, human says yes)
+  True Positives (TP):  1 (both say redundant)
+
+Performance Metrics:
+  Precision: 1.000
+  Recall:    0.200
+  F1 Score:  0.333
+
+False Negatives (Steps where judge missed redundancy):
+[13, 17, 29, 30]
+
+============================================================
+Analyzing: pvlib__pvlib-python-1154
+============================================================
+
+Total Steps: 40
+Human marked as redundant: 13
+Judge marked as redundant: 3
+
+Agreement Rate: 70.00%
+Cohen's Kappa: 0.146
+
+Confusion Matrix (Human as ground truth):
+  True Negatives (TN):  26 (both say not redundant)
+  False Positives (FP): 1 (judge says redundant, human says no)
+  False Negatives (FN): 11 (judge says not redundant, human says yes)
+  True Positives (TP):  2 (both say redundant)
+
+Performance Metrics:
+  Precision: 0.667
+  Recall:    0.154
+  F1 Score:  0.250
+
+False Positives (Steps where judge incorrectly marked as redundant):
+[40]
+
+False Negatives (Steps where judge missed redundancy):
+[7, 11, 17, 20, 22, 23, 25, 28, 30, 34, 39]
+
+============================================================
+Analyzing: pydicom__pydicom-1139
+============================================================
+
+Total Steps: 28
+Human marked as redundant: 12
+Judge marked as redundant: 2
+
+Agreement Rate: 64.29%
+Cohen's Kappa: 0.186
+
+Confusion Matrix (Human as ground truth):
+  True Negatives (TN):  16 (both say not redundant)
+  False Positives (FP): 0 (judge says redundant, human says no)
+  False Negatives (FN): 10 (judge says not redundant, human says yes)
+  True Positives (TP):  2 (both say redundant)
+
+Performance Metrics:
+  Precision: 1.000
+  Recall:    0.167
+  F1 Score:  0.286
+
+False Negatives (Steps where judge missed redundancy):
+[4, 5, 7, 9, 13, 16, 18, 20, 25, 27]
+
+============================================================
+OVERALL SUMMARY
+============================================================
+
+Total instances analyzed: 4
+
+Aggregate Statistics:
+  Mean Agreement Rate: 73.11% (±9.79%)
+  Mean Cohen's Kappa: 0.227 (±0.073)
+  Mean Precision: 0.867 (±0.163)
+  Mean Recall: 0.202 (±0.059)
+  Mean F1 Score: 0.323 (±0.074)
+
+Total Confusion Matrix:
+  Total TN: 91
+  Total FP: 2
+  Total FN: 35
+  Total TP: 9
+
+Results saved to:
+  - ../iaa_results/iaa_analysis_report.txt
+  - ../iaa_results/iaa_results_summary.csv
+  - ../iaa_results/iaa_disagreements.csv
+  - Visualizations in ../iaa_results/visualizations/

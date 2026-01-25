@@ -1,0 +1,39 @@
+Step,Redundant Y/N,Comments
+1,N,
+2,Y,Viewing entire file unnecessarily
+3,N,
+4,Y,Re-viewing
+5,N,
+6,N,
+7,N,
+8,N,
+9,N,
+10,N,
+11,Y,Re-viewing
+12,N,
+13,Y,Re-viewing
+14,N,
+15,N,
+16,Y,Re-viewing
+17,N,
+18,N,
+19,Y,Re-editing something that was already done in step 7 and 8 but got wiped due to the git checkout in step 15
+20,N,
+21,N,
+22,N,
+23,N,
+24,N,
+25,Y,Redundant grep
+26,N,
+27,Y,Duplicate Test
+28,Y,Inefficient Testing
+29,Y,Inefficient Testing
+30,Y,Inefficient Testing
+31,Y,Inefficient Testing
+32,N,
+33,N,
+34,N,
+35,N,
+36,Y,Redundant Testing
+37,Y,Redundant Testing
+38,N,

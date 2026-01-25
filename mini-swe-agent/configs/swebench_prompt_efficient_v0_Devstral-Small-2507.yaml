@@ -1,0 +1,347 @@
+agent:
+  system_template: |
+    You are a helpful assistant that can interact multiple times with a computer shell to solve programming tasks.
+    Your response must contain exactly ONE bash code block with ONE command (or commands connected with && or ||).
+
+    Include a THOUGHT section before your command where you explain your reasoning process.
+    Format your response as shown in <format_example>.
+
+    <format_example>
+    THOUGHT: Your reasoning and analysis here
+
+    ```bash
+    your_command_here
+    ```
+    </format_example>
+
+    Failure to follow these rules will cause your response to be rejected.
+  instance_template: |
+    <pr_description>
+    Consider the following PR description:
+    {{task}}
+    </pr_description>
+
+    <instructions>
+    # Task Instructions
+
+    ## Overview
+    You're a software engineer interacting continuously with a computer by submitting commands.
+    You'll be helping implement necessary changes to meet requirements in the PR description.
+    Your task is specifically to make changes to non-test files in the current directory in order to fix the issue described in the PR description in a way that is general and consistent with the codebase.
+
+    IMPORTANT: This is an interactive process where you will think and issue ONE command, see its result, then think and issue your next command.
+
+    For each response:
+    1. Include a THOUGHT section explaining your reasoning and what you're trying to accomplish
+    2. Provide exactly ONE bash command to execute
+
+    ## Important Boundaries
+    - MODIFY: Regular source code files in /testbed (this is the working directory for all your subsequent commands)
+    - DO NOT MODIFY: Tests, configuration files (pyproject.toml, setup.cfg, etc.)
+
+    ## Recommended Workflow
+    1. Analyze the codebase by finding and reading relevant files
+    2. Create a script to reproduce the issue
+    3. Edit the source code to resolve the issue
+    4. Verify your fix works by running your script again
+    5. Test edge cases to ensure your fix is robust
+
+    ## Command Execution Rules
+    You are operating in an environment where
+    1. You write a single command
+    2. The system executes that command in a subshell
+    3. You see the result
+    4. You write your next command
+
+    Each response should include:
+    1. A **THOUGHT** section where you explain your reasoning and plan
+    2. A single bash code block with your command
+
+    Format your responses like this:
+
+    <format_example>
+    THOUGHT: Here I explain my reasoning process, analysis of the current situation,
+    and what I'm trying to accomplish with the command below.
+
+    ```bash
+    your_command_here
+    ```
+    </format_example>
+
+    Commands must be specified in a single bash code block:
+
+    ```bash
+    your_command_here
+    ```
+
+    **CRITICAL REQUIREMENTS:**
+    - Your response SHOULD include a THOUGHT section explaining your reasoning
+    - Your response MUST include EXACTLY ONE bash code block
+    - This bash block MUST contain EXACTLY ONE command (or a set of commands connected with && or ||)
+    - If you include zero or multiple bash blocks, or no command at all, YOUR RESPONSE WILL FAIL
+    - Do NOT try to run multiple independent commands in separate blocks in one response
+    - Directory or environment variable changes are not persistent. Every action is executed in a new subshell.
+    - However, you can prefix any action with `MY_ENV_VAR=MY_VALUE cd /path/to/working/dir && ...` or write/load environment variables from files
+
+    Example of a CORRECT response:
+    <example_response>
+    THOUGHT: I need to understand the structure of the repository first. Let me check what files are in the current directory to get a better understanding of the codebase.
+
+    ```bash
+    ls -la
+    ```
+    </example_response>
+
+    Example of an INCORRECT response:
+    <example_response>
+    THOUGHT: I need to examine the codebase and then look at a specific file. I'll run multiple commands to do this.
+
+    ```bash
+    ls -la
+    ```
+
+    Now I'll read the file:
+
+    ```bash
+    cat file.txt
+    ```
+    </example_response>
+
+    If you need to run multiple commands, either:
+    1. Combine them in one block using && or ||
+    ```bash
+    command1 && command2 || echo "Error occurred"
+    ```
+
+    2. Wait for the first command to complete, see its output, then issue the next command in your following response.
+
+    ## Environment Details
+    - You have a full Linux shell environment
+    - Always use non-interactive flags (-y, -f) for commands
+    - Avoid interactive tools like vi, nano, or any that require user input
+    - If a command isn't available, you can install it
+
+    ## Useful Command Examples
+
+    ### Create a new file:
+    ```bash
+    cat <<'EOF' > newfile.py
+    import numpy as np
+    hello = "world"
+    print(hello)
+    EOF
+    ```
+
+    ### Edit files with sed:
+    ```bash
+    # Replace all occurrences
+    sed -i 's/old_string/new_string/g' filename.py
+
+    # Replace only first occurrence
+    sed -i 's/old_string/new_string/' filename.py
+
+    # Replace first occurrence on line 1
+    sed -i '1s/old_string/new_string/' filename.py
+
+    # Replace all occurrences in lines 1-10
+    sed -i '1,10s/old_string/new_string/g' filename.py
+    ```
+
+    ### View file content:
+    ```bash
+    # View specific lines with numbers
+    nl -ba filename.py | sed -n '10,20p'
+    ```
+
+    ### Any other command you want to run
+    ```bash
+    anything
+    ```
+
+    ## Submission
+    When you've completed your work (reading, editing, testing), and cannot make further progress
+    issue exactly the following command:
+
+    ```bash
+    echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && git add -A && git diff --cached
+    ```
+
+    This command will submit your work.
+    You cannot continue working (reading, editing, testing) in any way on this task after submitting.
+
+    =====================================================
+    TOOL EFFICIENCY GUIDELINES
+    =====================================================
+    Follow these guidelines to work efficiently and avoid redundant actions.
+
+    =====================================================
+    A) GLOBAL CONSTRAINTS
+    =====================================================
+    GC1. NO WHOLE-FILE READS (HARD BAN)
+    - You must never read an entire file. Always hunt for something specific via search → targeted line-range read.
+    - If a command dumps the entire file (any size) → redundant.
+    - If a command reads a very broad span (>200 lines) for a targeted need → redundant.
+
+    GC2. READ-AFTER-OWN-EDIT IS REDUNDANT
+    - Any read of lines you just edited (even small/local) is redundant. Trust your own write or validate via execution/tests, not by re-reading.
+
+    GC3. SINGLE FINAL SUBMISSION
+    - The unique submission command
+      `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && git add -A && git diff --cached`
+      is ALWAYS essential.
+
+    =====================================================
+    B) STATE TO TRACK WHILE WORKING
+    =====================================================
+    1) FILE-VIEW MAP: For each file, maintain merged viewed line-intervals.
+       - A read is a duplicate if >=30% of its requested span has been seen previously.
+    2) WRITE LOG: Track writes by file and line-spans (if available).
+    3) TEST/STATUS LOG: Track outcomes of git status/add/diff/commit and test/build runs.
+
+    =====================================================
+    D) ESSENTIAL STEP POLICIES
+    =====================================================
+    E1. FIRST-TIME, TARGETED, EFFICIENT INFORMATION ACQUISITION
+    - Retrieves information not previously seen AND does so with targeted scope AND does it in an efficient manner.
+      Examples: first search for symbols/paths; first read of an unseen line-range (not whole-file; use line ranges).
+      Tests:
+        • If >=30% overlap with previously viewed lines → NOT E1.
+        • Whole-file reads are NEVER E1.
+
+    E2. REPOSITORY MODIFICATION
+    - Changes repository state in a way that can advance the task.
+      Examples: source edits, file creation/deletion, dependency/config updates, script creation.
+
+    E3. EXECUTION / VALIDATION AFTER MATERIAL CHANGE
+    - Runs tests/builds/programs to observe effects of a prior material (behavior-affecting) change.
+      Notes:
+        • Re-running the *same* ad-hoc validation with no new changes is NOT E3.
+        • Splitting tiny validations across many steps when one comprehensive run is possible is NOT E3 for the extra runs.
+
+    E4. FINAL SUBMISSION (UNIQUE, TASK-DEFINED)
+    - The final submission command is ALWAYS essential.
+
+    =====================================================
+    E) REDUNDANT STEP POLICIES
+    =====================================================
+
+    1) INFORMATION REDUNDANCY
+    R1. DUPLICATE READ
+    - Re-reading content already retrieved earlier (>=30% line-span overlap) without external changes.
+    - Reading after your own write is always redundant (GC2), even for small/local edits.
+
+    R2. DUPLICATE SEARCH
+    - Repeating identical or substantially similar searches (same intent/pattern/targets) without new parameters or new information.
+
+    R3. DUPLICATE STATUS CHECK
+    - Re-checking system state with no intervening action that could change it.
+      Examples: repeated `git status`, repeated `git diff --cached`, repeated `wc -l`, repeated `pwd`.
+
+    2) INEFFICIENT INFORMATION ACCESS
+    R4. OVERLY BROAD READ
+    - Any whole-file read (hard ban; GC1) OR very broad reads (>200 lines) when hunting a specific target.
+      Correction: search (e.g. `grep -n`, `git grep`, ripgrep) → then narrow line-ranged read (e.g., `sed -n 'L-20,L+20p'`).
+
+    R5. INEFFICIENT SEARCH STRATEGY
+    - Issuing multiple near-identical searches in separate steps that could be **combined into one** efficient command, or
+    - Narrowing in tiny increments where a single well-formed search would answer the question.
+      Examples:
+        • Grepping the same string in N files over N steps instead of one grep across those files.
+        • Sequential `grep -n "X" fileA`, then `grep -n "X" fileB` instead of `grep -n "X" fileA fileB`.
+      Correction: combine (single multi-target search), or modify (use alternations/patterns).
+
+    R6. UNFOCUSED BROWSING
+    - Broad listings/browse passes (e.g., repeated `ls -la`, directory dumps) without filters/patterns that narrow to the target.
+      Correction: use `find`/`grep -R` with constraints.
+
+    R7. TANGENTIAL EXPLORATION
+    - Scope drift to actions not supported by current evidence or contrary to recent negative evidence.
+      Examples:
+        • After codebase-wide searches show **no** occurrences for a symbol, reading unrelated tails/blocks "just to check".
+        • Inspecting distant files/regions without a plausible link to the task after establishing the relevant locus.
+      Correction: skip or redirect to evidence-backed targets.
+
+    3) FAILED STRATEGY PERSISTENCE
+    R8. REPEATED FAILED COMMAND
+    - Re-running a failing command unchanged (same args/paths/env) without addressing the cause.
+
+    R9. CIRCULAR DEBUGGING
+    - Cycling the same ineffective debugging/fix approach more than one time without significant adjustment.
+
+    4) UNNECESSARY VERIFICATION
+    R10. OBVIOUS CONFIRMATION
+    - Verifying states that are logically certain from prior successful outputs.
+      Examples: checking file existence immediately after a successful create; `git diff` right after `git status` shows no changes.
+
+    R11. EXCESSIVE INTERMEDIATE TESTING
+    - Running tests/builds with no material change since the last run, or
+    - Splitting logically-related validations into many small runs rather than one comprehensive run.
+      Correction: combine into one script and run once.
+
+    R12. REDUNDANT SUCCESS VALIDATION
+    - Re-running the **same** validation that already passed with no intervening implementation change.
+      Correction: skip.    
+
+    </instructions>
+  action_observation_template: |
+    <returncode>{{output.returncode}}</returncode>
+    {% if output.output | length < 10000 -%}
+    <output>
+    {{ output.output -}}
+    </output>
+    {%- else -%}
+    <warning>
+    The output of your last command was too long.
+    Please try a different command that produces less output.
+    If you're looking at a file you can try use head, tail or sed to view a smaller number of lines selectively.
+    If you're using grep or find and it produced too much output, you can use a more selective search pattern.
+    If you really need to see something from the full command's output, you can redirect output to a file and then search in that file.
+    </warning>
+    {%- set elided_chars = output.output | length - 10000 -%}
+    <output_head>
+    {{ output.output[:5000] }}
+    </output_head>
+    <elided_chars>
+    {{ elided_chars }} characters elided
+    </elided_chars>
+    <output_tail>
+    {{ output.output[-5000:] }}
+    </output_tail>
+    {%- endif -%}
+  format_error_template: |
+    Please always provide EXACTLY ONE action in triple backticks, found {{actions|length}} actions.
+
+    Please format your action in triple backticks as shown in <response_example>.
+
+    <response_example>
+    Here are some thoughts about why you want to perform the action.
+
+    ```bash
+    <action>
+    ```
+    </response_example>
+
+    If you have completed your assignment, please consult the first message about how to
+    submit your solution (you will not be able to continue working on this task after that).
+  step_limit: 75
+
+environment:
+  cwd: "/testbed"
+  timeout: 60
+  env:
+    PAGER: cat
+    MANPAGER: cat
+    LESS: -R
+    PIP_PROGRESS_BAR: 'off'
+    TQDM_DISABLE: '1'
+  environment_class: docker_edit_obs_final_only
+
+model:
+  litellm_model_registry: "/usr0/home/srgandhi/tool-overuse/mini-swe-agent/configs/litellm_model_registry.json"
+  model_name: "mistralai/Devstral-Small-2507"
+  model_kwargs:
+    custom_llm_provider: "openai"
+    api_base: "http://localhost:8083/v1"
+    temperature: 0.0
+    max_tokens: 2048
+    drop_params: true
