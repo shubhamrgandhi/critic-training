@@ -2,3 +2,26 @@ results*
 judge_analysis*
 judge_swe_bench*
 *.zip
+sample_analysis
+agent_logs
+babel-server
+*.claude
+__pycache__/
+*.pyc
+connect_job.sh
+scripts/delete_richard_key.sh
+scripts/test_richard_bedrock.py
+openhands-critic/
+manual_analysis/
+
+# Large data files (GitHub 100MB limit)
+finetuning/prm_sft_data_*/prm_sft_train.jsonl
+finetuning/prm_sft_data_*/prm_sft_val.jsonl
+finetuning/eval_results*/*/responses.jsonl
+finetuning/eval_results*/*.jsonl
+
+# Root-level ad-hoc analysis files
+analyze_prm_*.py
+prm_failure_case_study.md
+prm_postprocessing_examples.md
+prm_trajectory_analysis.txt
