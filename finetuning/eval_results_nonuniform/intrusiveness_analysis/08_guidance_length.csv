@@ -1,0 +1,5 @@
+Metric,Ground Truth (Claude Opus),Qwen3-8B (Base),RS-SFT,RS-SFT-Think
+Mean,1440,746,1786,2000
+Median,1375,710,1693,1621
+p25,1163,0,1424,1347
+p75,1615,1114,1998,1989

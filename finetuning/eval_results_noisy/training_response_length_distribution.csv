@@ -1,0 +1,18 @@
+Opus PRM Response Length (chars),Count,% of Training Data,Avg Errors Detected by Opus
+0-1k,162,6.3%,0.0
+1k-2k,122,4.7%,0.2
+2k-3k,425,16.5%,1.0
+3k-4k,691,26.9%,2.7
+4k-5k,673,26.2%,4.0
+5k-6k,336,13.1%,5.1
+6k-8k,151,5.9%,5.7
+8k+,13,0.5%,5.5
+
+Summary
+Metric,Value
+Pearson r (errors detected vs response length),0.821
+Min response length,94
+Median response length,3846
+Mean response length,3787
+Max response length,14981
+Total training samples,2573

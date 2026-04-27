@@ -1,0 +1,7 @@
+Metric,Qwen3-8B (Base),RS-SFT,RS-SFT-Think
+Also says 'On Track',177 (46.7%),264 (69.7%),246 (64.9%)
+Says 'Needs Correction',99 (26.1%),105 (27.7%),118 (31.1%)
+Says 'Critical',25 (6.6%),10 (2.6%),11 (2.9%)
+Unparseable,78 (20.6%),0 (0.0%),4 (1.1%)
+Mean categories flagged,0.63,0.84,0.82
+GT mean categories flagged,0.47,0.47,0.47

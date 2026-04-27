@@ -1,0 +1,7 @@
+Metric,Description,qwen3-8b-base,qwen3-8b-opus-distill-32k-lr5e6,Delta
+BLEU-1,% of model's words that match Opus,0.2795,0.4358,+0.1563
+BLEU-2,% of model's 2-word phrases that match Opus,0.2005,0.3225,+0.1220
+BLEU-4,% of model's 4-word phrases that match Opus,0.1400,0.2251,+0.0851
+ROUGE-1,% of Opus's words covered by model,0.4713,0.5954,+0.1241
+ROUGE-2,% of Opus's 2-word phrases covered by model,0.2568,0.3449,+0.0881
+ROUGE-L,How similar the structure/ordering is to Opus,0.2776,0.3443,+0.0667

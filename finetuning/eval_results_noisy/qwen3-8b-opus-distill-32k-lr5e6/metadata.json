@@ -1,0 +1,10 @@
+{
+  "model_name": "qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6",
+  "model_label": "qwen3-8b-opus-distill-32k-lr5e6",
+  "api_base": "http://babel-m5-28:8071/v1",
+  "data_path": "prm_sft_data_opus_distill_full_feedback_history_32k_old/prm_sft_train.jsonl",
+  "n_samples": 2573,
+  "n_errors": 0,
+  "disable_thinking": true,
+  "timestamp": "2026-03-12 10:34:28"
+}

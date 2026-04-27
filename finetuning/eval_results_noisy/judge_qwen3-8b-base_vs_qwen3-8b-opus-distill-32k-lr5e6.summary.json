@@ -1,0 +1,11 @@
+{
+  "model_a": "qwen3-8b-base",
+  "model_b": "qwen3-8b-opus-distill-32k-lr5e6",
+  "total_judged": 2571,
+  "wins_model_a": 487,
+  "wins_model_b": 2074,
+  "ties": 10,
+  "pct_model_a": 18.9,
+  "pct_model_b": 80.7,
+  "pct_tie": 0.4
+}

@@ -1,0 +1,126 @@
+Confusion Matrices: Base Qwen3-8B vs Opus Ground Truth
+
+TaskSpecViol
+,Predicted Yes,Predicted No
+Actual Yes,40,54
+Actual No,202,1777
+
+RoleSpecViol
+,Predicted Yes,Predicted No
+Actual Yes,0,0
+Actual No,41,2031
+
+StepRepeat
+,Predicted Yes,Predicted No
+Actual Yes,665,541
+Actual No,79,786
+
+TermCondUnaware
+,Predicted Yes,Predicted No
+Actual Yes,14,113
+Actual No,25,1885
+
+ProbMisID
+,Predicted Yes,Predicted No
+Actual Yes,109,270
+Actual No,134,1557
+
+ToolSelErr
+,Predicted Yes,Predicted No
+Actual Yes,262,365
+Actual No,248,1194
+
+Hallucinations
+,Predicted Yes,Predicted No
+Actual Yes,8,89
+Actual No,24,1931
+
+InfoProcFail
+,Predicted Yes,Predicted No
+Actual Yes,663,662
+Actual No,190,537
+
+TaskDerail
+,Predicted Yes,Predicted No
+Actual Yes,277,507
+Actual No,198,1088
+
+GoalDeviation
+,Predicted Yes,Predicted No
+Actual Yes,21,130
+Actual No,79,1833
+
+CtxHandlFail
+,Predicted Yes,Predicted No
+Actual Yes,198,305
+Actual No,170,1393
+
+VerifFail
+,Predicted Yes,Predicted No
+Actual Yes,1083,159
+Actual No,290,524
+
+
+Confusion Matrices: SFT Qwen3-8B vs Opus Ground Truth
+
+TaskSpecViol
+,Predicted Yes,Predicted No
+Actual Yes,22,88
+Actual No,9,2273
+
+RoleSpecViol
+,Predicted Yes,Predicted No
+Actual Yes,0,0
+Actual No,0,2387
+
+StepRepeat
+,Predicted Yes,Predicted No
+Actual Yes,1082,313
+Actual No,73,923
+
+TermCondUnaware
+,Predicted Yes,Predicted No
+Actual Yes,14,124
+Actual No,0,2248
+
+ProbMisID
+,Predicted Yes,Predicted No
+Actual Yes,231,222
+Actual No,115,1819
+
+ToolSelErr
+,Predicted Yes,Predicted No
+Actual Yes,314,399
+Actual No,97,1576
+
+Hallucinations
+,Predicted Yes,Predicted No
+Actual Yes,3,110
+Actual No,6,2261
+
+InfoProcFail
+,Predicted Yes,Predicted No
+Actual Yes,1150,403
+Actual No,188,643
+
+TaskDerail
+,Predicted Yes,Predicted No
+Actual Yes,393,516
+Actual No,95,1372
+
+GoalDeviation
+,Predicted Yes,Predicted No
+Actual Yes,27,149
+Actual No,15,2184
+
+CtxHandlFail
+,Predicted Yes,Predicted No
+Actual Yes,183,412
+Actual No,40,1739
+
+VerifFail
+,Predicted Yes,Predicted No
+Actual Yes,1296,118
+Actual No,128,833
+
+

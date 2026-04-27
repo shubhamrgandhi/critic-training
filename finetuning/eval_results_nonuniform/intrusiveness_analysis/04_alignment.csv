@@ -1,0 +1,4 @@
+Model,Exact Match,Over-Intervention,Under-Intervention,Unparseable,N (valid GT)
+Qwen3-8B (Base),829 (34.6%),504 (21.1%),318 (13.3%),742 (31.0%),2393
+RS-SFT,1735 (72.5%),243 (10.2%),412 (17.2%),3 (0.1%),2393
+RS-SFT-Think,1700 (71.0%),267 (11.2%),398 (16.6%),28 (1.2%),2393

@@ -1,0 +1,13 @@
+Prompt Length (chars),Num Samples,Avg Opus Response (chars),Avg Base Qwen3-8B Response (chars),Avg SFT Qwen3-8B Response (chars)
+0-20k,131,3002,1792,2867
+20k-40k,552,3091,1680,2846
+40k-60k,505,3269,2556,3340
+60k-80k,440,3739,3204,4049
+80k-100k,320,4257,3264,4524
+100k-130k,565,4813,4120,4995
+130k+,60,4437,4315,4780
+
+Summary
+Metric,Value
+Pearson r (prompt length vs Opus response length),0.421
+Interpretation,"Moderate positive correlation: longer trajectories (more agent steps) lead to longer PRM feedback. SFT closely tracks Opus response length across all prompt lengths. Base consistently undershoots."

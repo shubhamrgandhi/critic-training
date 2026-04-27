@@ -1,0 +1,5 @@
+Status,Ground Truth (Claude Opus),Qwen3-8B (Base),RS-SFT,RS-SFT-Think
+On track,379 (15.8%),391 (16.3%),411 (17.2%),406 (17.0%)
+Needs correction,1475 (61.6%),653 (27.3%),1568 (65.5%),1517 (63.4%)
+Critical intervention required,539 (22.5%),607 (25.4%),411 (17.2%),442 (18.5%)
+Unparseable,0 (0.0%),742 (31.0%),3 (0.1%),28 (1.2%)

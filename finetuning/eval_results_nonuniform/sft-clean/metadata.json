@@ -1,0 +1,10 @@
+{
+  "model_name": "shubhamrgandhi/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_clean",
+  "model_label": "sft-clean",
+  "api_base": "http://localhost:8071/v1",
+  "data_path": "/home/srgandhi/tool-overuse/finetuning/prm_sft_data_opus_distill_full_feedback_history_32k/prm_sft_train.jsonl",
+  "n_samples": 2393,
+  "n_errors": 0,
+  "disable_thinking": false,
+  "timestamp": "2026-03-27 17:16:38"
+}

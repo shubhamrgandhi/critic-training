@@ -1,0 +1,38 @@
+{
+  "models": {
+    "qwen3-8b-base": {
+      "n_samples": 2573,
+      "avg_bleu": {
+        "bleu1": 0.279452121905975,
+        "bleu2": 0.20050426800121415,
+        "bleu4": 0.13998089951096607
+      },
+      "avg_rouge": {
+        "rouge1": 0.47130068823244214,
+        "rouge2": 0.2567996625926977,
+        "rougeL": 0.2776423863786747
+      }
+    },
+    "qwen3-8b-opus-distill-32k-lr5e6": {
+      "n_samples": 2573,
+      "avg_bleu": {
+        "bleu1": 0.4357868844389078,
+        "bleu2": 0.3225351567983282,
+        "bleu4": 0.22505035296326908
+      },
+      "avg_rouge": {
+        "rouge1": 0.5953981610301664,
+        "rouge2": 0.34493360656057176,
+        "rougeL": 0.34429830031296565
+      }
+    }
+  },
+  "comparison": {
+    "shared_samples": 2573,
+    "rougeL_wins": {
+      "qwen3-8b-base": 423,
+      "qwen3-8b-opus-distill-32k-lr5e6": 1888,
+      "tie": 262
+    }
+  }
+}

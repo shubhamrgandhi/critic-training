@@ -1,0 +1,6 @@
+Metric,Ground Truth (Claude Opus),Qwen3-8B (Base),RS-SFT,RS-SFT-Think
+Mean response length (chars),4029,3034,4644,5584
+Median,3964,2000,4447,4895
+p25,3115,1179,3345,3660
+p75,4806,3313,5678,6332
+Mean ratio (model/GT),1.00,0.79,1.19,1.41
