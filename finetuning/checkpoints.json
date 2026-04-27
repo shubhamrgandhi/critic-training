@@ -1,0 +1,18 @@
+{
+  "data_path": "prm_sft_data_opus_distill_full_feedback_history_32k/prm_sft_train.jsonl",
+  "eval_dir": "eval_results",
+  "checkpoints": [
+    {
+      "model_name": "qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_rejection-sample",
+      "model_label": "sft-rejection-sample",
+      "api_base": "http://babel-x5-28:8071/v1",
+      "description": "SFT on rejection-sampled opus-distill data, 3 epochs, lr=5e-6"
+    },
+    {
+      "model_name": "Qwen/Qwen3-8B",
+      "model_label": "qwen3-8b-base",
+      "api_base": null,
+      "description": "Base Qwen3-8B (untrained baseline)"
+    }
+  ]
+}
