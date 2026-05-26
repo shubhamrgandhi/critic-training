@@ -5,20 +5,17 @@ Reads trajectory files from a PRM-enhanced run and reconstructs the exact
 inputs the PRM (Claude Opus) received at each invocation, paired with its
 response.  Outputs data in LlamaFactory sharegpt format (JSONL with messages).
 
-Data source:
-    results_singularity/singularity_edit_obs_final_only_prm_issue_res_k5_0_cwm_prm_claude-opus-4-6
+Two output formats (controlled by --format):
 
-IMPORTANT NOTE ON DATA FIDELITY:
-    The runs used to generate this data employed a 300-char TRUNCATION of
-    previous supervisor feedbacks when building the agent's supervisor message
-    (in _build_supervisor_message).  However, the PRM itself always received
-    FULL (untruncated) previous feedbacks in its input context.  Therefore
-    the training samples reconstructed here accurately reflect what the PRM
-    saw during those runs.
+  flattened  — 3-message format: system + single user message (with
+               [STEP-ENVIRONMENT]/[STEP-AGENT] tags) + assistant.
+               Standard SFT loss on the single assistant turn.
 
-    If the PRM code is later changed so that the PRM also receives SUMMARIZED
-    (via LLM call) previous feedbacks instead of full ones, the data would
-    need to be regenerated from new runs to match the new inference format.
+  multiturn  — Real multi-turn chat: system, then alternating user/assistant
+               messages matching the actual trajectory, ending with the PRM
+               response.  Requires mask_history=true in LlamaFactory so loss
+               is computed only on the final assistant turn (PRM response),
+               not on the agent's assistant turns.
 """
 
 import argparse
@@ -30,126 +27,49 @@ import sys
 from pathlib import Path
 
 
-# ---------------------------------------------------------------------------
-# PRM system prompt — copied verbatim from the config YAML so training data
-# matches inference exactly.
-# ---------------------------------------------------------------------------
-PRM_SYSTEM_PROMPT = """\
-You are a supervisor monitoring an LLM-based coding agent. Your role is to detect trajectory-level errors and provide corrective guidance to prevent task failure.
-Analyze the provided agent trace for the following error categories. For each detected error, provide specific evidence and a recovery action.
+# Tag constants for flattened format — matches the original training/inference
+# format used in previous experiments.
+TAG_ENVIRONMENT = "[USER/ENVIRONMENT]"
+TAG_AGENT = "[AGENT RESPONSE]"
+TAG_FEEDBACK_PREFIX = "[PREVIOUS_FEEDBACK"  # followed by " #N]:"
 
-The agent works in an isolated repo; assume no hidden external edits. There is EXACTLY ONE final submission command; it is ALWAYS essential.
 
-SPECIFICATION ERRORS (System Design Issues)
+def extract_prm_system_prompt(traj: dict) -> str:
+    """Extract the PRM system prompt from the trajectory config."""
+    config = traj.get("info", {}).get("config", {})
+    agent_config = config.get("agent", {})
+    prompt = agent_config.get("prm_template", "")
+    if not prompt:
+        raise ValueError("No prm_template found in trajectory config")
+    return prompt
 
-1. Task Specification Violations
-Definition: Agent fails to adhere to task constraints or requirements
-Recovery: Redirect agent to original task requirements
 
-2. Role Specification Violations
-Definition: Agent behaves outside its defined role/responsibilities
-Recovery: Remind agent of its specific role and boundaries
+def build_after_step_map(traj: dict) -> dict[int, int]:
+    """Build a map from invocation number (1-indexed) to after_step.
 
-3. Step Repetition
-Definition: Unnecessary repetition of completed steps or actions
-Recovery: Acknowledge completed work and guide to next logical step
+    Uses the feedback log first (authoritative), falls back to supervisor
+    message _prm_after_step metadata.
+    """
+    step_map: dict[int, int] = {}
 
-4. Termination Condition Unawareness
-Definition: Agent continues working when task completion criteria are met
-Recovery: Signal completion criteria and instruct to finalize
+    fl = traj.get("info", {}).get("prm_stats", {}).get("prm_feedback_log", [])
+    for entry in fl:
+        inv = entry.get("invocation", 0)
+        step = entry.get("after_step")
+        if inv and step is not None:
+            step_map[inv] = step
 
-REASONING ERRORS (Decision Making Issues)
+    if not step_map:
+        messages = traj.get("messages", [])
+        inv_counter = 0
+        for msg in messages:
+            if msg.get("_supervisor"):
+                inv_counter += 1
+                step = msg.get("_prm_after_step")
+                if step is not None:
+                    step_map[inv_counter] = step
 
-5. Problem Misidentification
-Definition: Agent misunderstands the core problem or current subtask
-Recovery: Clarify the actual problem and expected approach
-
-6. Tool Selection Errors
-Definition: Agent uses inappropriate tools for the current task
-Recovery: Suggest correct tools and explain their appropriate usage
-
-7. Hallucinations
-Definition: Agent generates false information or fabricates tool outputs
-Recovery: Request verification of claims against actual evidence
-
-8. Information Processing Failures
-Definition: Poor retrieval of relevant information or misinterpretation
-Recovery: Guide agent to correct information sources and interpretation
-
-COORDINATION ERRORS (Process Management Issues)
-
-9. Task Derailment
-Definition: Agent deviates from intended objective or loses focus
-Recovery: Realign agent with original objectives and priorities
-
-10. Goal Deviation
-Definition: Agent pursues goals that don't serve the main objective
-Recovery: Refocus on primary goals and expected outcomes
-
-11. Context Handling Failures
-Definition: Agent loses important context or forgets previous findings
-Recovery: Provide context summary and key information recap
-
-12. Verification Failures
-Definition: Inadequate checking of work quality or correctness
-Recovery: Instruct specific verification steps and quality checks
-
-=====================================================
-RESPONSE FORMAT
-=====================================================
-
-For each error category, respond with:
-DETECTED: Yes/No
-EVIDENCE: Specific quote or observation from trace (if detected)
-RECOVERY_ACTION: Specific instruction to correct the error (if detected)
-
-Then provide:
-TASK_STATUS: On track / Needs correction / Critical intervention required
-OVERALL_GUIDANCE: Detailed and specific guidance for the agent
-
-Example Response Structure
-
-SPECIFICATION ERRORS:
-1. Task Specification Violations: DETECTED: No
-2. Role Specification Violations: DETECTED: No
-3. Step Repetition: DETECTED: Yes
-EVIDENCE: "Agent ran the same test command three times: 'pytest test_file.py'"
-RECOVERY_ACTION: "The test has already been executed successfully. Proceed to analyze the results and move to the next development step."
-4. Termination Condition Unawareness: DETECTED: No
-
-REASONING ERRORS:
-5. Problem Misidentification: DETECTED: No
-6. Tool Selection Errors: DETECTED: Yes
-EVIDENCE: "Agent used text editor to run Python code instead of using the Python interpreter"
-RECOVERY_ACTION: "Use the Python interpreter tool for code execution. The text editor is for viewing and modifying files only."
-7. Hallucinations: DETECTED: No
-8. Information Processing Failures: DETECTED: No
-
-COORDINATION ERRORS:
-9. Task Derailment: DETECTED: No
-10. Goal Deviation: DETECTED: No
-11. Context Handling Failures: DETECTED: No
-12. Verification Failures: DETECTED: No
-
-TASK_STATUS: Needs correction
-OVERALL_GUIDANCE: You are repeating actions unnecessarily and using incorrect tools. Specifically:
-1. Stop running the same test command repeatedly - the test 'pytest test_file.py' has already been executed successfully three times with the same result
-2. Use the Python interpreter tool for executing Python code, not the text editor which is only for viewing and modifying files
-3. Now focus on analyzing the test results you already obtained to determine what the next development step should be
-4. Review the test output to identify any failing tests or areas that need improvement
-5. If all tests are passing, proceed to verify your implementation meets the original requirements before considering the task complete
-
-=====================================================
-INSTRUCTIONS
-=====================================================
-
-1. Focus on errors that can be corrected through guidance
-2. Provide specific, actionable recovery instructions
-3. Be concise but precise in evidence citations
-4. Only mark "DETECTED: Yes" if you have clear evidence
-5. Prioritize errors that most threaten task completion
-
-Now review the agent's trajectory and provide your supervisor feedback."""
+    return step_map
 
 
 def strip_think_tags(text: str) -> str:
@@ -226,7 +146,7 @@ def find_supervisor_indices(messages: list[dict]) -> list[int]:
     return [i for i, m in enumerate(messages) if m.get("_supervisor", False)]
 
 
-def reconstruct_prm_samples(traj: dict) -> list[dict]:
+def reconstruct_prm_samples(traj: dict, prm_system_prompt: str) -> list[dict]:
     """Given a trajectory dict, reconstruct each PRM invocation as a training sample.
 
     Each sample is a list of messages (sharegpt format) ending with the PRM's
@@ -241,47 +161,59 @@ def reconstruct_prm_samples(traj: dict) -> list[dict]:
     if not sup_indices:
         return []
 
+    after_step_map = build_after_step_map(traj)
+
     samples = []
-    previous_feedbacks: list[dict] = []  # Accumulates full feedbacks for PRM input
+    previous_feedbacks: list[dict] = []
 
     for inv_num, sup_idx in enumerate(sup_indices):
         sup_msg = messages[sup_idx]
-        # Extract the PRM's actual response (the "Current Feedback" section)
-        prm_response = extract_current_feedback(sup_msg["content"])
+        inv_number = inv_num + 1  # 1-indexed
+
+        # Extract the PRM's actual response.  Newer runs store raw feedback
+        # as the supervisor message content; older runs wrap it in
+        # "## Current Feedback".
+        content = extract_text_content(sup_msg.get("content", ""))
+        if "## Current Feedback" in content:
+            prm_response = extract_current_feedback(content)
+        else:
+            prm_response = strip_think_tags(content)
+            if prm_response and not is_valid_prm_feedback(prm_response):
+                prm_response = ""
 
         if not prm_response.strip():
             continue
 
         # --- Reconstruct PRM input messages ---
+        # Match the exact format used at inference in _invoke_prm_inner():
+        #   system: PRM system prompt
+        #   user:   single flattened message with tagged blocks
 
-        # 1. System prompt
-        prm_messages = [{"role": "system", "content": PRM_SYSTEM_PROMPT}]
+        prm_messages = [{"role": "system", "content": prm_system_prompt}]
 
-        # 2. Task context (from instance_template message, index 1)
-        task_context = messages[1]["content"]
+        # Task context (from instance_template message, index 1)
+        task_context = extract_text_content(messages[1].get("content", ""))
         prm_messages.append({
             "role": "user",
-            "content": (
-                "## Original Task Given to Agent:\n\n"
-                f"{task_context}\n\n"
-                "## Agent's Trajectory:\n\n"
-                "Now reviewing the agent's actions..."
-            ),
+            "content": task_context,
         })
 
-        # 3. Agent conversation up to (but not including) this supervisor message.
-        #    Skip system (idx 0), instance template (idx 1), and all supervisor msgs.
+        # Agent conversation up to (but not including) this supervisor message.
+        # Skip system (idx 0), instance template (idx 1), and all supervisor msgs.
         for msg in messages[2:sup_idx]:
             if msg.get("_supervisor"):
                 continue
             prm_messages.append(clean_message_for_training(msg))
 
-        # 4. Previous feedback history context (full, not truncated — matches
-        #    what the PRM received during the actual run)
+        # Cap feedback history to most recent MAX entries, matching inference
+        # (default_prm.py MAX_PRM_FEEDBACK_HISTORY = 5).
+        MAX_PRM_FEEDBACK_HISTORY = 5
+        recent_feedbacks = previous_feedbacks[-MAX_PRM_FEEDBACK_HISTORY:]
+
         history_context = ""
-        if previous_feedbacks:
+        if recent_feedbacks:
             history_context = "\n\n## Previous Supervisor Feedback History:\n"
-            for j, fb in enumerate(previous_feedbacks, 1):
+            for j, fb in enumerate(recent_feedbacks, 1):
                 history_context += (
                     f"\n### Feedback #{j} (after step {fb['after_step']}):\n"
                     f"{fb['feedback']}\n"
@@ -295,25 +227,23 @@ def reconstruct_prm_samples(traj: dict) -> list[dict]:
             ),
         })
 
-        # 5. PRM's response (training target)
+        # PRM's response (training target)
         prm_messages.append({
             "role": "assistant",
             "content": prm_response,
         })
 
-        # Merge consecutive same-role messages (can happen at boundaries)
         prm_messages = merge_consecutive_roles(prm_messages)
 
         samples.append({
             "messages": prm_messages,
             "instance_id": instance_id,
-            "invocation": inv_num + 1,
+            "invocation": inv_number,
         })
 
-        # Compute after_step for this feedback.
-        # PRM interval is 5, so after_step = 5 * (inv_num + 1)
-        # We approximate from invocation number since exact step isn't stored.
-        after_step = 5 * (inv_num + 1)
+        after_step = after_step_map.get(inv_number)
+        if after_step is None:
+            after_step = sup_msg.get("_prm_after_step", inv_number * 10)
         previous_feedbacks.append({
             "after_step": after_step,
             "feedback": prm_response,
@@ -347,43 +277,33 @@ def format_for_llamafactory(sample: dict) -> dict:
     This avoids intermediate assistant turns being trained on.
 
     The user message is structured as:
-      1. Task context block: [USER/ENVIRONMENT]: ## Original Task ...
-      2. Trajectory blocks: alternating [AGENT RESPONSE] and [USER/ENVIRONMENT]
-      3. Feedback blocks: [PREVIOUS_FEEDBACK #N]: ... (one per past feedback, oldest first)
-      4. Final prompt: [USER/ENVIRONMENT]: Please provide your supervisor feedback ...
+      1. Task context block: [STEP-ENVIRONMENT]: <task context>
+      2. Trajectory blocks: alternating [STEP-AGENT] and [STEP-ENVIRONMENT]
+      3. Feedback blocks: [PREV-FEEDBACK #N]: ... (one per past feedback)
+      4. Final prompt: [STEP-ENVIRONMENT]: Please provide your supervisor feedback ...
 
-    Feedback blocks are separated from trajectory blocks so that truncation
-    can independently manage each category.
+    Tags use distinct names (not [USER/ENVIRONMENT] / [AGENT RESPONSE]) to
+    prevent the finetuned model from hallucinating agent-style entries.
+    These tags must match the ones used at inference in default_prm.py.
     """
     messages = sample["messages"]
 
-    # First message should be system
     system_content = messages[0]["content"] if messages[0]["role"] == "system" else ""
 
-    # Last message should be the PRM assistant response
     prm_response = messages[-1]["content"]
     assert messages[-1]["role"] == "assistant", "Last message must be assistant (PRM response)"
 
-    # Everything between system and final assistant is trajectory context.
-    # Agent assistant messages (role=assistant) are the coding agent's responses,
-    # NOT PRM guidance — label them clearly to avoid confusion during training.
     context_parts = []
     for msg in messages[1:-1]:
         if msg["role"] == "assistant":
-            context_parts.append(f"[AGENT RESPONSE]: {msg['content']}")
+            context_parts.append(f"{TAG_AGENT}: {msg['content']}")
         elif msg["role"] == "user":
             content = msg["content"]
-            # Detect and tag individual previous feedbacks separately so
-            # truncation can drop them independently.
             if "## Previous Supervisor Feedback History:" in content:
-                # Split: everything before the history header is context,
-                # each ### Feedback #N block becomes its own tagged block,
-                # and the final prompt line stays as a separate block.
                 hist_start = content.index("## Previous Supervisor Feedback History:")
                 before_hist = content[:hist_start].strip()
                 hist_and_prompt = content[hist_start:]
 
-                # The prompt is the last paragraph after all feedbacks
                 prompt_marker = "Please provide your supervisor feedback now"
                 prompt_idx = hist_and_prompt.find(prompt_marker)
                 if prompt_idx >= 0:
@@ -393,29 +313,24 @@ def format_for_llamafactory(sample: dict) -> dict:
                     hist_section = hist_and_prompt.strip()
                     prompt_section = ""
 
-                # Add any content before the history (should be minimal)
                 if before_hist:
-                    context_parts.append(f"[USER/ENVIRONMENT]: {before_hist}")
+                    context_parts.append(f"{TAG_ENVIRONMENT}: {before_hist}")
 
-                # Split individual feedbacks
                 fb_blocks = re.split(r"(?=### Feedback #\d+)", hist_section)
                 for fb_block in fb_blocks:
                     fb_block = fb_block.strip()
                     if not fb_block or fb_block == "## Previous Supervisor Feedback History:":
                         continue
-                    # Extract feedback number
                     fb_match = re.match(r"### Feedback #(\d+)", fb_block)
                     if fb_match:
                         fb_num = fb_match.group(1)
-                        # Remove the ### header line, keep just the content
                         fb_content = re.sub(r"^### Feedback #\d+[^\n]*\n?", "", fb_block).strip()
-                        context_parts.append(f"[PREVIOUS_FEEDBACK #{fb_num}]: {fb_content}")
+                        context_parts.append(f"{TAG_FEEDBACK_PREFIX} #{fb_num}]: {fb_content}")
 
-                # Add the final prompt
                 if prompt_section:
-                    context_parts.append(f"[USER/ENVIRONMENT]: {prompt_section}")
+                    context_parts.append(f"{TAG_ENVIRONMENT}: {prompt_section}")
             else:
-                context_parts.append(f"[USER/ENVIRONMENT]: {content}")
+                context_parts.append(f"{TAG_ENVIRONMENT}: {content}")
         else:
             context_parts.append(f"[{msg['role'].upper()}]: {content}")
 
@@ -430,28 +345,169 @@ def format_for_llamafactory(sample: dict) -> dict:
     }
 
 
+def format_multiturn_for_llamafactory(sample: dict) -> dict:
+    """Convert a sample to LlamaFactory multi-turn sharegpt SFT format.
+
+    Preserves the natural multi-turn structure of the trajectory:
+      system:    PRM system prompt
+      user:      task context
+      assistant: agent step 1
+      user:      env output 1
+      assistant: agent step 2
+      user:      env output 2
+      ...
+      user:      [previous feedbacks] + final prompt
+      assistant: PRM response  ← only this gets loss (via mask_history=true)
+
+    No tags needed — the chat template itself provides structural boundaries
+    via <|im_start|>user / <|im_start|>assistant tokens.  The model learns
+    to generate PRM feedback when it's its turn, not to continue agent output.
+    """
+    messages = sample["messages"]
+
+    system_content = messages[0]["content"] if messages[0]["role"] == "system" else ""
+    prm_response = messages[-1]["content"]
+    assert messages[-1]["role"] == "assistant", "Last message must be assistant (PRM response)"
+
+    out_messages = [{"role": "system", "content": system_content}]
+
+    for msg in messages[1:-1]:
+        out_messages.append({"role": msg["role"], "content": msg["content"]})
+
+    # Merge consecutive same-role messages (can happen at user/user boundaries
+    # where feedback history is appended after the last env output)
+    merged = [out_messages[0]]
+    for msg in out_messages[1:]:
+        if msg["role"] == merged[-1]["role"] and msg["role"] != "system":
+            merged[-1]["content"] += "\n\n" + msg["content"]
+        else:
+            merged.append(msg)
+
+    # The final assistant turn is the PRM response
+    merged.append({"role": "assistant", "content": prm_response})
+
+    return {"messages": merged}
+
+
+def smart_truncate_multiturn(
+    formatted_sample: dict,
+    tokenizer,
+    max_tokens: int,
+    max_feedbacks: int = 0,
+) -> dict:
+    """Truncate multi-turn samples by dropping oldest complete turn pairs.
+
+    A "turn pair" is a (user, assistant) pair representing one agent step
+    (environment output + agent response).  Dropping a pair keeps the
+    conversation coherent — never splits a turn mid-way.
+
+    Preserves:
+      - System message (index 0)
+      - Task context (first user message, index 1)
+      - Last user message (feedbacks + prompt)
+      - Last assistant message (PRM response — training target)
+
+    Drops oldest turn pairs first (keeps most recent trajectory).
+    """
+    msgs = formatted_sample["messages"]
+    total_tokens = sum(len(tokenizer.encode(m["content"])) for m in msgs)
+
+    if total_tokens <= max_tokens:
+        return formatted_sample
+
+    # Fixed messages: system (0), task context (1), last user (-2), last assistant (-1)
+    fixed_indices = {0, 1, len(msgs) - 2, len(msgs) - 1}
+    fixed_tokens = sum(
+        len(tokenizer.encode(msgs[i]["content"])) for i in fixed_indices
+    ) + 100  # overhead
+
+    available = max_tokens - fixed_tokens
+    if available < 1000:
+        available = 1000
+
+    # Variable messages: everything between task context and final user/assistant
+    variable = msgs[2:-2]
+
+    # Group into turn pairs (user, assistant).  The first variable message
+    # should be assistant (agent's first response after task context).
+    # Group consecutive messages into (user, assistant) pairs where each
+    # pair represents one complete agent step.
+    pairs: list[tuple[list[dict], int]] = []
+    i = 0
+    while i < len(variable):
+        pair_msgs = [variable[i]]
+        pair_tokens = len(tokenizer.encode(variable[i]["content"]))
+        # If this is a user message followed by assistant, group them
+        if i + 1 < len(variable) and variable[i]["role"] != variable[i + 1]["role"]:
+            pair_msgs.append(variable[i + 1])
+            pair_tokens += len(tokenizer.encode(variable[i + 1]["content"]))
+            i += 2
+        else:
+            i += 1
+        pairs.append((pair_msgs, pair_tokens))
+
+    # Keep most recent pairs that fit within budget
+    kept_reversed: list[tuple[list[dict], int]] = []
+    used = 0
+    for pair_msgs, pair_tokens in reversed(pairs):
+        if used + pair_tokens > available:
+            break
+        kept_reversed.append((pair_msgs, pair_tokens))
+        used += pair_tokens
+    kept_pairs = list(reversed(kept_reversed))
+
+    dropped_pairs = len(pairs) - len(kept_pairs)
+    dropped_msgs = sum(len(p) for p, _ in pairs) - sum(len(p) for p, _ in kept_pairs)
+
+    result_msgs = [msgs[0], msgs[1]]  # system + task context
+    if dropped_pairs > 0:
+        result_msgs.append({
+            "role": "user",
+            "content": f"[...{dropped_msgs} earlier trajectory messages ({dropped_pairs} turn pairs) omitted...]",
+        })
+    for pair_msgs, _ in kept_pairs:
+        result_msgs.extend(pair_msgs)
+    result_msgs.append(msgs[-2])  # final user (feedbacks + prompt)
+    result_msgs.append(msgs[-1])  # PRM response
+
+    # Re-merge consecutive same-role after insertion of truncation marker
+    merged = [result_msgs[0]]
+    for msg in result_msgs[1:]:
+        if msg["role"] == merged[-1]["role"] and msg["role"] != "system":
+            merged[-1]["content"] += "\n\n" + msg["content"]
+        else:
+            merged.append(msg)
+
+    return {"messages": merged}
+
+
 def split_user_into_blocks(user_content: str) -> list[tuple[str, str]]:
     """Split the flattened user message into categorised (tag, text) blocks.
 
     Returns a list of (category, raw_block_text) where category is one of:
-      "task"      — the first [USER/ENVIRONMENT] block (task context)
-      "trajectory"— [AGENT RESPONSE] or [USER/ENVIRONMENT] blocks (agent steps)
-      "feedback"  — [PREVIOUS_FEEDBACK #N] blocks
-      "prompt"    — the final [USER/ENVIRONMENT] "Please provide your supervisor
+      "task"      — the first [STEP-ENVIRONMENT] block (task context)
+      "trajectory"— [STEP-AGENT] or [STEP-ENVIRONMENT] blocks (agent steps)
+      "feedback"  — [PREV-FEEDBACK #N] blocks
+      "prompt"    — the final [STEP-ENVIRONMENT] "Please provide your supervisor
                      feedback now …" block
     """
-    # Split on double-newline followed by a tag
-    pattern = r"\n\n(?=\[(?:AGENT RESPONSE|USER/ENVIRONMENT|PREVIOUS_FEEDBACK #\d+|[A-Z/ ]+)\]:)"
+    tag_names = [
+        re.escape(TAG_AGENT),
+        re.escape(TAG_ENVIRONMENT),
+        re.escape(TAG_FEEDBACK_PREFIX) + r" #\d+\]",
+        r"\[CRITICAL CONTEXT\]",
+    ]
+    pattern = r"\n\n(?=(?:" + "|".join(tag_names) + r"):)"
     raw_blocks = [p for p in re.split(pattern, user_content) if p.strip()]
 
     categorised: list[tuple[str, str]] = []
     seen_task = False
     for block in raw_blocks:
-        if block.startswith("[PREVIOUS_FEEDBACK"):
+        if block.startswith(TAG_FEEDBACK_PREFIX):
             categorised.append(("feedback", block))
-        elif block.startswith("[USER/ENVIRONMENT]:") and "Please provide your supervisor feedback now" in block:
+        elif block.startswith(f"{TAG_ENVIRONMENT}:") and "Please provide your supervisor feedback now" in block:
             categorised.append(("prompt", block))
-        elif block.startswith("[USER/ENVIRONMENT]:") and not seen_task:
+        elif block.startswith(f"{TAG_ENVIRONMENT}:") and not seen_task:
             categorised.append(("task", block))
             seen_task = True
         else:
@@ -627,15 +683,20 @@ def main():
     )
     parser.add_argument(
         "--results_dir",
-        default="/home/srgandhi/tool-overuse/results_singularity/"
-                "singularity_edit_obs_final_only_prm_issue_res_k5_0_cwm_prm_claude-opus-4-6",
+        required=True,
         help="Path to results directory containing trajectory subdirectories.",
     )
     parser.add_argument(
         "--output_dir",
-        default="/home/srgandhi/tool-overuse/finetuning/"
-                "prm_sft_data_opus_distill_full_feedback_history",
+        required=True,
         help="Output directory for prepared training data.",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["flattened", "multiturn"],
+        default="flattened",
+        help="Output format. 'flattened' = 3-message format with tags (standard SFT). "
+             "'multiturn' = real chat turns with mask_history=true (loss only on last assistant).",
     )
     parser.add_argument(
         "--train_ratio",
@@ -706,10 +767,27 @@ def main():
     traj_files = sorted(results_dir.glob("*/*.traj.json"))
     print(f"Found {len(traj_files)} trajectory files in {results_dir}", flush=True)
 
+    # Extract PRM system prompt from first valid trajectory
+    prm_system_prompt = None
+    for traj_path in traj_files:
+        try:
+            with open(traj_path) as f:
+                traj = json.load(f)
+            prm_system_prompt = extract_prm_system_prompt(traj)
+            break
+        except (json.JSONDecodeError, IOError, ValueError):
+            continue
+
+    if not prm_system_prompt:
+        print("ERROR: Could not extract PRM system prompt from any trajectory")
+        sys.exit(1)
+    print(f"Extracted PRM system prompt ({len(prm_system_prompt)} chars)", flush=True)
+
     all_samples = []
     skipped = 0
     errors = 0
     filtered = 0
+    denoised = 0
 
     for traj_path in tqdm(traj_files, desc="Extracting samples"):
         try:
@@ -720,16 +798,19 @@ def main():
             errors += 1
             continue
 
-        # Filter by resolved instances if rejection sampling is enabled
         instance_id = traj.get("instance_id", "unknown")
         if resolved_ids is not None and instance_id not in resolved_ids:
             filtered += 1
             continue
 
-        samples = reconstruct_prm_samples(traj)
+        samples = reconstruct_prm_samples(traj, prm_system_prompt)
         if not samples:
             skipped += 1
             continue
+
+        # Track denoised count (feedback log entries minus valid samples)
+        fl = traj.get("info", {}).get("prm_stats", {}).get("prm_feedback_log", [])
+        denoised += len(fl) - len(samples)
 
         all_samples.extend(samples)
 
@@ -737,6 +818,7 @@ def main():
           f"from {len(traj_files) - skipped - errors - filtered} trajectories")
     print(f"  Skipped (no supervisor messages): {skipped}")
     print(f"  Errors (failed to read): {errors}")
+    print(f"  Denoised (invalid feedback removed): {denoised}")
     if resolved_ids is not None:
         print(f"  Filtered (unresolved instances): {filtered}")
 
@@ -781,6 +863,10 @@ def main():
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
         print("Tokenizer loaded.", flush=True)
 
+    # Select formatter based on --format
+    use_multiturn = args.format == "multiturn"
+    print(f"\nFormat: {args.format}" + (" (requires mask_history=true in training config)" if use_multiturn else ""), flush=True)
+
     # Write output files
     train_path = output_dir / "prm_sft_train.jsonl"
 
@@ -794,16 +880,27 @@ def main():
         split_name = "train" if "train" in str(path) else "val"
         with open(path, "w") as f:
             for s in tqdm(samples, desc=f"Writing {split_name}"):
-                formatted = format_for_llamafactory(s)
-                if tokenizer is not None:
-                    original = formatted
-                    formatted = smart_truncate_for_token_budget(
-                        formatted, tokenizer, args.max_tokens,
-                        max_feedbacks=args.max_feedbacks,
-                        feedback_budget_ratio=args.feedback_budget_ratio,
-                    )
-                    if formatted["messages"][1]["content"] != original["messages"][1]["content"]:
-                        truncated_count += 1
+                if use_multiturn:
+                    formatted = format_multiturn_for_llamafactory(s)
+                    if tokenizer is not None:
+                        original = formatted
+                        formatted = smart_truncate_multiturn(
+                            formatted, tokenizer, args.max_tokens,
+                            max_feedbacks=args.max_feedbacks,
+                        )
+                        if len(formatted["messages"]) != len(original["messages"]):
+                            truncated_count += 1
+                else:
+                    formatted = format_for_llamafactory(s)
+                    if tokenizer is not None:
+                        original = formatted
+                        formatted = smart_truncate_for_token_budget(
+                            formatted, tokenizer, args.max_tokens,
+                            max_feedbacks=args.max_feedbacks,
+                            feedback_budget_ratio=args.feedback_budget_ratio,
+                        )
+                        if formatted["messages"][1]["content"] != original["messages"][1]["content"]:
+                            truncated_count += 1
                 f.write(json.dumps(formatted, ensure_ascii=False) + "\n")
         print(f"Wrote {len(samples)} samples to {path}")
 
@@ -811,8 +908,9 @@ def main():
         print(f"Smart-truncated {truncated_count} samples")
         if args.max_feedbacks > 0:
             print(f"  Max feedbacks per sample: {args.max_feedbacks}")
-        print(f"  Feedback budget ratio: {args.feedback_budget_ratio}")
-        print(f"  Strategy: drop oldest trajectory steps & feedbacks first, never mid-cut")
+        if not use_multiturn:
+            print(f"  Feedback budget ratio: {args.feedback_budget_ratio}")
+        print(f"  Strategy: drop oldest {'messages' if use_multiturn else 'trajectory steps & feedbacks'} first")
 
     # Write dataset_info.json for LlamaFactory legacy sharegpt format
     sharegpt_tags = {
@@ -842,19 +940,36 @@ def main():
         json.dump(dataset_info, f, indent=2)
     print(f"Wrote dataset info to {info_path}")
 
-    # Write a metadata file documenting the data provenance
+    # Derive PRM interval from after_step values in first valid trajectory
+    prm_interval = None
+    for traj_path in traj_files[:10]:
+        try:
+            with open(traj_path) as f:
+                traj = json.load(f)
+            step_map = build_after_step_map(traj)
+            if len(step_map) >= 2:
+                steps = sorted(step_map.values())
+                prm_interval = steps[1] - steps[0]
+                break
+            elif step_map:
+                prm_interval = list(step_map.values())[0]
+                break
+        except Exception:
+            continue
+
     metadata = {
         "source_results_dir": str(results_dir),
-        "source_run_config": "swebench_singularity_edit_obs_final_only_prm_issue_res_k5_0_cwm.yaml",
         "prm_model": "us.anthropic.claude-opus-4-6-v1",
         "agent_model": "facebook/cwm",
-        "prm_interval": 5,
+        "prm_interval": prm_interval,
+        "format": args.format,
         "feedback_history_format": "full_untruncated",
         "max_tokens": args.max_tokens,
         "max_feedbacks": args.max_feedbacks,
         "feedback_budget_ratio": args.feedback_budget_ratio,
         "num_truncated_samples": truncated_count,
-        "num_trajectories": len(traj_files) - skipped - errors,
+        "num_denoised": denoised,
+        "num_trajectories": len(traj_files) - skipped - errors - filtered,
         "num_train_samples": len(train_samples),
         "num_val_samples": len(val_samples),
         "train_instance_ids": sorted(train_ids),

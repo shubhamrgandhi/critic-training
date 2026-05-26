@@ -5,6 +5,7 @@
 
 import concurrent.futures
 import json
+import os
 import random
 import re
 import threading
@@ -20,6 +21,7 @@ from rich.live import Live
 
 from minisweagent import Environment
 from minisweagent.agents.default import DefaultAgent
+from minisweagent.agents.default_prm import DefaultPRMAgent
 from minisweagent.config import builtin_config_dir, get_config_path
 from minisweagent.environments import get_environment
 from minisweagent.models import get_model
@@ -43,8 +45,37 @@ DATASET_MAPPING = {
     "multimodal": "princeton-nlp/SWE-Bench_Multimodal",
     "multilingual": "swe-bench/SWE-Bench_Multilingual",
     "smith": "SWE-bench/SWE-smith",
+    "r2egym": "R2E-Gym/R2E-Gym-V1",
+    "r2egym-subset": "R2E-Gym/R2E-Gym-Subset",
     "_test": "klieret/swe-bench-dummy-test-dataset",
 }
+
+R2EGYM_DATASETS = {"R2E-Gym/R2E-Gym-V1", "R2E-Gym/R2E-Gym-Subset"}
+
+
+def _is_r2egym_dataset(dataset_path: str) -> bool:
+    if dataset_path in R2EGYM_DATASETS:
+        return True
+    # Local filesystem copies of R2E-Gym data — identify by path substring
+    return "r2egym" in dataset_path.lower() or "r2e_gym" in dataset_path.lower()
+
+
+def normalize_r2egym_instance(instance: dict) -> dict:
+    """Normalize an R2E-Gym instance to the format expected by the SWE-bench pipeline.
+
+    Adds ``instance_id`` and ``image_name``, strips ``[ISSUE]`` tags from
+    ``problem_statement``.  Returns a new dict (the original is not mutated).
+    """
+    instance = dict(instance)
+    instance["instance_id"] = f"{instance['repo_name']}__{instance['commit_hash'][:12]}"
+    instance["image_name"] = instance["docker_image"]
+    ps = instance.get("problem_statement", "")
+    if ps.startswith("[ISSUE]"):
+        ps = ps[len("[ISSUE]"):]
+    if ps.endswith("[/ISSUE]"):
+        ps = ps[:-len("[/ISSUE]")]
+    instance["problem_statement"] = ps.strip()
+    return instance
 
 
 _OUTPUT_FILE_LOCK = threading.Lock()
@@ -66,6 +97,23 @@ class ProgressTrackingAgent(DefaultAgent):
         return super().step()
 
 
+class ProgressTrackingPRMAgent(DefaultPRMAgent):
+    """Wrapper around DefaultPRMAgent that provides progress updates."""
+
+    def __init__(self, *args, progress_manager: RunBatchProgressManager, instance_id: str = "", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.progress_manager: RunBatchProgressManager = progress_manager
+        self.instance_id = instance_id
+
+    def step(self) -> dict:
+        """Override step to provide progress updates."""
+        self.progress_manager.update_instance_status(
+            self.instance_id, f"Step {self.model.n_calls + 1:3d} (${self.model.cost:.2f})"
+        )
+        return super().step()
+
+
+
 def get_swebench_docker_image_name(instance: dict) -> str:
     """Get the image name for a SWEBench instance."""
     image_name = instance.get("image_name", None)
@@ -83,8 +131,14 @@ def get_sb_environment(config: dict, instance: dict) -> Environment:
     image_name = get_swebench_docker_image_name(instance)
     if "docker" in env_config["environment_class"]:
         env_config["image"] = image_name
-    elif env_config["environment_class"] == "singularity":
-        env_config["image"] = "docker://" + image_name
+    elif "singularity" in env_config["environment_class"]:
+        # Prefer a prepulled local SIF if available to avoid Docker Hub rate limits.
+        sif_cache = os.environ.get("SWEBENCH_SIF_CACHE", "/data/user_data/srgandhi/tool-overuse/sif_cache")
+        cached_sif = Path(sif_cache) / f"{instance['instance_id']}.sif"
+        if cached_sif.is_file() and cached_sif.stat().st_size > 0:
+            env_config["image"] = str(cached_sif)
+        else:
+            env_config["image"] = "docker://" + image_name
     env = get_environment(env_config)
     if startup_command := config.get("run", {}).get("env_startup_command"):
         startup_command = Template(startup_command, undefined=StrictUndefined).render(**instance)
@@ -96,6 +150,8 @@ def get_sb_environment(config: dict, instance: dict) -> Environment:
 
 def update_preds_file(output_path: Path, instance_id: str, model_name: str, result: str):
     """Update the output JSON file with results from a single instance."""
+    from minisweagent.run.utils.diff_cleanup import clean_diff_text
+    cleaned = clean_diff_text(result) if isinstance(result, str) else result
     with _OUTPUT_FILE_LOCK:
         output_data = {}
         if output_path.exists():
@@ -103,7 +159,7 @@ def update_preds_file(output_path: Path, instance_id: str, model_name: str, resu
         output_data[instance_id] = {
             "model_name_or_path": model_name,
             "instance_id": instance_id,
-            "model_patch": result,
+            "model_patch": cleaned,
         }
         output_path.write_text(json.dumps(output_data, indent=2))
 
@@ -138,15 +194,22 @@ def process_instance(
     progress_manager.update_instance_status(instance_id, "Pulling/starting docker")
 
     agent = None
+    env = None
     extra_info = None
 
     try:
         env = get_sb_environment(config, instance)
-        agent = ProgressTrackingAgent(
+        use_prm = config.get("agent", {}).get("use_prm", False)
+        AgentClass = ProgressTrackingPRMAgent if use_prm else ProgressTrackingAgent
+        extra_kwargs = {}
+        if use_prm and config.get("prm_model"):
+            extra_kwargs["prm_model"] = get_model(config=config.get("prm_model", {}))
+        agent = AgentClass(
             model,
             env,
             progress_manager=progress_manager,
             instance_id=instance_id,
+            **extra_kwargs,
             **config.get("agent", {}),
         )
         exit_status, result = agent.run(task)
@@ -166,6 +229,11 @@ def process_instance(
         )
         update_preds_file(output_dir / "preds.json", instance_id, model.config.model_name, result)
         progress_manager.on_instance_end(instance_id, exit_status)
+        if env is not None:
+            try:
+                env.cleanup()
+            except Exception as e:
+                logger.debug(f"Error cleaning up environment for {instance_id}: {e}")
 
 
 def filter_instances(
@@ -213,6 +281,9 @@ def main(
     dataset_path = DATASET_MAPPING.get(subset, subset)
     logger.info(f"Loading dataset {dataset_path}, split {split}...")
     instances = list(load_dataset(dataset_path, split=split))
+    if _is_r2egym_dataset(dataset_path):
+        instances = [normalize_r2egym_instance(inst) for inst in instances]
+        logger.info(f"Normalized {len(instances)} R2E-Gym instances")
 
     instances = filter_instances(instances, filter_spec=filter_spec, slice_spec=slice_spec, shuffle=shuffle)
     if not redo_existing and (output_path / "preds.json").exists():

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from minisweagent import Agent, __version__
+from minisweagent.run.utils.diff_cleanup import clean_diff_text, clean_message_content
 
 
 def _get_class_name_with_module(obj: Any) -> str:
@@ -67,8 +68,45 @@ def save_traj(
             "model_type": _get_class_name_with_module(agent.model),
             "environment_type": _get_class_name_with_module(agent.env),
         }
+        # Save PRM stats if the agent has them
+        if getattr(agent, "prm_model", None) is not None:
+            # Compute total PRM tokens from feedback log
+            feedback_log = getattr(agent, "prm_feedback_log", [])
+            prm_input_tokens = sum(
+                (entry.get("usage") or {}).get("prompt_tokens", 0)
+                for entry in feedback_log
+            )
+            prm_output_tokens = sum(
+                (entry.get("usage") or {}).get("completion_tokens", 0)
+                for entry in feedback_log
+            )
+            data["info"]["prm_stats"] = {
+                "prm_cost": getattr(agent, "prm_cost", 0.0),
+                "prm_input_tokens": prm_input_tokens,
+                "prm_output_tokens": prm_output_tokens,
+                "prm_api_calls": agent.prm_model.n_calls,
+                "prm_invocations": getattr(agent, "prm_invocations", 0),
+                "prm_total_agent_steps": getattr(agent, "total_agent_steps", 0),
+                "prm_feedback_history": getattr(agent, "prm_feedback_history", []),
+                "prm_feedback_log": feedback_log,
+                "prm_dedup_suppressions": getattr(agent, "prm_dedup_suppressions", 0),
+            }
+            data["info"]["prm_model_stats"] = {
+                "prm_model_cost": agent.prm_model.cost,
+                "prm_model_api_calls": agent.prm_model.n_calls,
+            }
+            data["info"]["config"]["prm_model"] = _asdict(agent.prm_model.config)
+            data["info"]["config"]["prm_model_type"] = _get_class_name_with_module(agent.prm_model)
     if extra_info:
         data["info"].update(extra_info)
+
+    # Strip noisy diff sections (.venv/, __pycache__/, etc.) from submission and
+    # any message that contains a git diff. Set MSWEA_DISABLE_DIFF_CLEANUP=1 to skip.
+    if isinstance(data["info"].get("submission"), str):
+        data["info"]["submission"] = clean_diff_text(data["info"]["submission"])
+    for msg in data.get("messages", []):
+        if isinstance(msg, dict) and "content" in msg:
+            msg["content"] = clean_message_content(msg["content"])
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2))

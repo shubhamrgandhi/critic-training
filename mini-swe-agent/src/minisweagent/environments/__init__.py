@@ -10,6 +10,7 @@ _ENVIRONMENT_MAPPING = {
     "docker_edit_obs_diff": "minisweagent.environments.docker_edit_obs_diff.DockerEnvironment",
     "docker_edit_obs_final_only": "minisweagent.environments.docker_edit_obs_final_only.DockerEnvironment",
     "singularity": "minisweagent.environments.singularity.SingularityEnvironment",
+    "singularity_edit_obs_final_only": "minisweagent.environments.singularity_edit_obs_final_only.SingularityEnvironment",
     "local": "minisweagent.environments.local.LocalEnvironment",
     "swerex_docker": "minisweagent.environments.extra.swerex_docker.SwerexDockerEnvironment",
     "bubblewrap": "minisweagent.environments.extra.bubblewrap.BubblewrapEnvironment",

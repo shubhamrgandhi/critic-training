@@ -36,8 +36,8 @@
         "max_tokens": 128000,
         "max_input_tokens": 120000,
         "max_output_tokens": 5000,
-        "input_cost_per_token": 9e-7,
-        "output_cost_per_token": 9e-7
+        "input_cost_per_token": 8e-08,
+        "output_cost_per_token": 2.8e-07
     },
     "facebook/cwm-sft": {
         "litellm_provider": "openai",
@@ -46,8 +46,8 @@
         "max_tokens": 128000,
         "max_input_tokens": 120000,
         "max_output_tokens": 5000,
-        "input_cost_per_token": 9e-7,
-        "output_cost_per_token": 9e-7
+        "input_cost_per_token": 8e-08,
+        "output_cost_per_token": 2.8e-07
     },
     "facebook/cwm-pretrain": {
         "litellm_provider": "openai",
@@ -56,8 +56,8 @@
         "max_tokens": 128000,
         "max_input_tokens": 120000,
         "max_output_tokens": 5000,
-        "input_cost_per_token": 9e-7,
-        "output_cost_per_token": 9e-7
+        "input_cost_per_token": 8e-08,
+        "output_cost_per_token": 2.8e-07
     },
     "mistralai/Devstral-Small-2507": {
         "litellm_provider": "openai",
@@ -66,8 +66,8 @@
         "max_tokens": 128000,
         "max_input_tokens": 120000,
         "max_output_tokens": 5000,
-        "input_cost_per_token": 7e-8,
-        "output_cost_per_token": 2.8e-7
+        "input_cost_per_token": 7e-08,
+        "output_cost_per_token": 2.8e-07
     },
     "mistralai/Mistral-Small-3.1-24B-Base-2503": {
         "litellm_provider": "openai",
@@ -76,7 +76,227 @@
         "max_tokens": 128000,
         "max_input_tokens": 120000,
         "max_output_tokens": 5000,
-        "input_cost_per_token": 7e-8,
-        "output_cost_per_token": 2.8e-7
+        "input_cost_per_token": 7e-08,
+        "output_cost_per_token": 2.8e-07
+    },
+    "qwen3-8b-opus-distill": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "Qwen/Qwen3-8B": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_rejection-sample": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_rejection-sample": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_clean_think": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_clean": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6-flattened": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6-multiturn": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-instructions-k10-opus-distill-32k-lr5e6-flattened": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-instructions-k10-opus-distill-32k-lr5e6-multiturn": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-k5-opus-distill-32k-lr5e6-multiturn": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-instructions-k5-opus-distill-32k-lr5e6-multiturn": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-k5-opus-distill-32k-lr5e6-multiturn": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-opus-distill-32k-lr5e6-multiturn": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "shubhamrgandhi/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_rejection-sample_think": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "Qwen/Qwen3-8B": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 5e-08,
+        "output_cost_per_token": 2e-07
+    },
+    "Qwen/Qwen2.5-Coder-7B-Instruct": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 3e-08,
+        "output_cost_per_token": 9e-08
+    },
+    "SWE-bench/SWE-agent-LM-7B": {
+        "litellm_provider": "openai",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 4096,
+        "input_cost_per_token": 3e-08,
+        "output_cost_per_token": 9e-08
+    },
+    "bedrock/qwen.qwen3-32b-v1:0": {
+        "litellm_provider": "bedrock",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 32768,
+        "max_input_tokens": 32768,
+        "max_output_tokens": 8192,
+        "input_cost_per_token": 8e-08,
+        "output_cost_per_token": 2.8e-07
+    },
+    "bedrock/qwen.qwen3-235b-a22b-2507-v1:0": {
+        "litellm_provider": "bedrock",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 262144,
+        "max_input_tokens": 262144,
+        "max_output_tokens": 8192,
+        "input_cost_per_token": 2.2e-07,
+        "output_cost_per_token": 8.8e-07
+    },
+    "bedrock/qwen.qwen3-next-80b-a3b": {
+        "litellm_provider": "bedrock",
+        "mode": "chat",
+        "supports_tool_choice": false,
+        "max_tokens": 131072,
+        "max_input_tokens": 131072,
+        "max_output_tokens": 8192,
+        "input_cost_per_token": 9e-08,
+        "output_cost_per_token": 7.8e-07
     }
 }

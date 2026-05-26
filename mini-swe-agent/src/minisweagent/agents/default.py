@@ -28,6 +28,37 @@ class AgentConfig:
     step_limit: int = 0
     cost_limit: float = 3.0
 
+    # PRM (supervisor) settings — disabled by default
+    use_prm: bool = False
+    prm_interval: int = 5
+    prm_template: str = ""
+
+    # PRM feedback deduplication — disabled by default
+    prm_dedup: bool = False
+    prm_dedup_threshold: float = 0.93
+    prm_dedup_model: str = "text-embedding-3-large"
+
+    # PRM feedback post-processing — disabled by default
+    prm_postprocess: bool = False
+    prm_postprocess_model: str = "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+    # PRM input format: "flattened" = single user message with tags,
+    # "multiturn" = real chat turns matching the trajectory,
+    # "auto" = detect from prm model name (contains "multiturn" → multiturn, else flattened)
+    prm_format: str = "auto"
+
+    # PRM best-of-N selection — disabled by default (n_candidates=1)
+    prm_n_candidates: int = 1
+    prm_select: str = "shortest"  # "shortest" or "first"
+
+    # Prefix replay — reuse first prm_interval steps from a base run (empty = disabled)
+    prefix_trajectory_dir: str = ""
+
+    # Step-aware submission nudge — disabled by default (threshold=0 means off)
+    step_aware_threshold: int = 0
+    step_aware_agent_template: str = ""
+    step_aware_prm_template: str = ""
+
 
 class NonTerminatingException(Exception):
     """Raised for conditions that can be handled by the agent."""
@@ -146,6 +177,8 @@ class DefaultAgent:
 
     def has_finished(self, output: dict[str, str]):
         """Raises Submitted exception with final output if the agent has finished its task."""
+        markers = {"MINI_SWE_AGENT_FINAL_OUTPUT", "COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT"}
         lines = output.get("output", "").lstrip().splitlines(keepends=True)
-        if lines and lines[0].strip() in ["MINI_SWE_AGENT_FINAL_OUTPUT", "COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT"]:
-            raise Submitted("".join(lines[1:]))
+        for idx, line in enumerate(lines):
+            if line.strip() in markers:
+                raise Submitted("".join(lines[idx + 1:]))

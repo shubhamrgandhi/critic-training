@@ -9,6 +9,8 @@ babel-server
 __pycache__/
 *.pyc
 connect_job.sh
+reserve_cpus.sh
+sbatch_logs/
 scripts/delete_richard_key.sh
 scripts/test_richard_bedrock.py
 openhands-critic/
@@ -25,3 +27,7 @@ analyze_prm_*.py
 prm_failure_case_study.md
 prm_postprocessing_examples.md
 prm_trajectory_analysis.txt
+
+logs/
+/paper
+/paper-context

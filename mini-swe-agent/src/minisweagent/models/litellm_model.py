@@ -58,6 +58,24 @@ class LitellmModel:
         except litellm.exceptions.AuthenticationError as e:
             e.message += " You can permanently set your API key with `mini-extra config set KEY VALUE`."
             raise e
+        except litellm.exceptions.BadRequestError as e:
+            # Some providers (notably Bedrock for Qwen) return context-window
+            # exhaustion as BadRequestError instead of ContextWindowExceededError.
+            # Detect by message and re-raise so the agent terminates cleanly
+            # instead of retrying the same too-long prompt.
+            msg = str(getattr(e, "message", "")) + " " + str(e)
+            if (
+                "maximum context length" in msg
+                or "context length" in msg.lower()
+                or "input tokens" in msg.lower() and "total of at least" in msg.lower()
+                or "prompt is too long" in msg.lower()
+            ):
+                raise litellm.exceptions.ContextWindowExceededError(
+                    message=str(e),
+                    model=self.config.model_name,
+                    llm_provider=self.config.model_kwargs.get("custom_llm_provider", "unknown"),
+                ) from e
+            raise
 
     def query(self, messages: list[dict[str, str]], **kwargs) -> dict:
         response = self._query(messages, **kwargs)

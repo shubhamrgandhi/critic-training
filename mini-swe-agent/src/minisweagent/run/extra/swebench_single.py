@@ -13,7 +13,9 @@ from minisweagent.config import builtin_config_dir, get_config_path
 from minisweagent.models import get_model
 from minisweagent.run.extra.swebench import (
     DATASET_MAPPING,
+    _is_r2egym_dataset,
     get_sb_environment,
+    normalize_r2egym_instance,
 )
 from minisweagent.run.utils.save import save_traj
 from minisweagent.utils.log import logger
@@ -40,9 +42,12 @@ def main(
     """Run on a single SWE-Bench instance."""
     dataset_path = DATASET_MAPPING.get(subset, subset)
     logger.info(f"Loading dataset from {dataset_path}, split {split}...")
+    raw_instances = list(load_dataset(dataset_path, split=split))
+    if _is_r2egym_dataset(dataset_path):
+        raw_instances = [normalize_r2egym_instance(inst) for inst in raw_instances]
     instances = {
         inst["instance_id"]: inst  # type: ignore
-        for inst in load_dataset(dataset_path, split=split)
+        for inst in raw_instances
     }
     if instance_spec.isnumeric():
         instance_spec = sorted(instances.keys())[int(instance_spec)]
@@ -71,6 +76,10 @@ def main(
         extra_info = {"traceback": traceback.format_exc()}
     finally:
         save_traj(agent, output, exit_status=exit_status, result=result, extra_info=extra_info)  # type: ignore[arg-type]
+        try:
+            env.cleanup()
+        except Exception as e:
+            logger.debug(f"Error cleaning up environment: {e}")
 
 
 if __name__ == "__main__":
