@@ -4,21 +4,35 @@ judge_swe_bench*
 *.zip
 sample_analysis
 agent_logs
-babel-server
+babel-server/sbatch_logs/
+babel-server/vllm_logs/
 *.claude
+.claude/
+.venv/
 __pycache__/
 *.pyc
-connect_job.sh
-reserve_cpus.sh
+/connect_job.sh
+/reserve_cpus.sh
 sbatch_logs/
-scripts/delete_richard_key.sh
+vllm_logs/
+
+# AWS / Bedrock / SageMaker (excluded from handover; recipient uses Babel)
+scripts/aws_*.sh
+scripts/aws_*.log
+scripts/test_bedrock_opus.py
 scripts/test_richard_bedrock.py
+scripts/test_sagemaker_prm.py
+scripts/run_qwen_bedrock.sh
+scripts/delete_richard_key.sh
+
 openhands-critic/
 manual_analysis/
 
 # Large data files (GitHub 100MB limit)
 finetuning/prm_sft_data_*/prm_sft_train.jsonl
 finetuning/prm_sft_data_*/prm_sft_val.jsonl
+finetuning/prm_sft_*/prm_sft_train.jsonl
+finetuning/prm_sft_*/prm_sft_val.jsonl
 finetuning/eval_results*/*/responses.jsonl
 finetuning/eval_results*/*.jsonl
 
