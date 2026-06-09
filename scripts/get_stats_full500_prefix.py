@@ -12,6 +12,75 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+DIFF_FILE_RE = re.compile(r"^diff --git a/(\S+) b/", re.MULTILINE)
+BASH_BLOCK_RE = re.compile(r"```bash\n(.*?)\n```", re.DOTALL)
+
+
+def load_gold_patches(dataset: str = "princeton-nlp/SWE-bench_Verified",
+                      split: str = "test") -> dict:
+    """Return {instance_id: gold patch string}. Empty dict on failure."""
+    try:
+        from datasets import load_dataset
+        ds = load_dataset(dataset, split=split)
+        return {row["instance_id"]: row["patch"] for row in ds}
+    except Exception as e:
+        print(f"WARNING: could not load gold patches ({e}); "
+              f"localization will be N/A", file=sys.stderr)
+        return {}
+
+
+def files_in_patch(patch: str) -> set:
+    if not patch:
+        return set()
+    return set(DIFF_FILE_RE.findall(patch))
+
+
+def normalize_file_path(p: str) -> str:
+    """SWE-bench gold patches use repo-relative paths. Strip leading ./ or
+    testbed/ prefixes that occasionally appear in agent patches."""
+    if p.startswith("./"):
+        p = p[2:]
+    if p.startswith("testbed/"):
+        p = p[len("testbed/"):]
+    return p
+
+
+def localized(model_patch: str, gold_patch: str) -> bool:
+    """File-level recall: at least one file the agent modified appears in the
+    gold patch's file set."""
+    m = {normalize_file_path(f) for f in files_in_patch(model_patch)}
+    g = {normalize_file_path(f) for f in files_in_patch(gold_patch)}
+    if not m or not g:
+        return False
+    return bool(m & g)
+
+
+def is_stuck_in_loop(traj: dict, k: int = 3) -> bool:
+    """True if the agent emits the same bash command in K consecutive assistant
+    steps at any point in the trajectory. Compares the extracted bash command
+    rather than full content. Falls back to full content if no bash block."""
+    msgs = traj.get("messages", [])
+    cmds = []
+    for m in msgs:
+        if not isinstance(m, dict) or m.get("role") != "assistant":
+            continue
+        content = m.get("content") or ""
+        if not isinstance(content, str):
+            content = str(content)
+        bashes = BASH_BLOCK_RE.findall(content)
+        if len(bashes) == 1:
+            cmds.append(bashes[0].strip())
+        else:
+            cmds.append(content.strip())
+
+    if len(cmds) < k:
+        return False
+    for i in range(len(cmds) - k + 1):
+        window = cmds[i: i + k]
+        if all(c == window[0] for c in window):
+            return True
+    return False
+
 # Per-token pricing (full input, no cache discounts).
 # See scripts/get_stats_mini50.py for rationale.
 MODEL_PRICING = {
@@ -117,7 +186,8 @@ def get_instance_ids(run_dir: Path) -> set[str]:
         return {p.name for p in run_dir.iterdir() if p.is_dir()}
 
 
-def compute_stats(run_dir: Path, instance_ids: set[str]) -> dict:
+def compute_stats(run_dir: Path, instance_ids: set[str],
+                  gold_patches: dict | None = None) -> dict:
     report_path = run_dir / "report.json"
     resolved_ids = set()
     if report_path.exists():
@@ -126,11 +196,23 @@ def compute_stats(run_dir: Path, instance_ids: set[str]) -> dict:
 
     resolved_in_subset = resolved_ids & instance_ids
 
+    # Load preds.json for localization (file-level recall vs gold patch).
+    preds = {}
+    preds_path = run_dir / "preds.json"
+    if preds_path.exists():
+        try:
+            with open(preds_path) as f:
+                preds = json.load(f)
+        except Exception:
+            preds = {}
+
     exit_counts = Counter()
     total_steps = 0
     total_cost = 0.0
     total_prm_cost = 0.0
     n_found = 0
+    n_loops = 0
+    n_traj_seen = 0
     missing = []
 
     for instance_id in sorted(instance_ids):
@@ -162,6 +244,29 @@ def compute_stats(run_dir: Path, instance_ids: set[str]) -> dict:
         total_prm_cost += recompute_prm_cost(traj)
         n_found += 1
 
+        n_traj_seen += 1
+        if is_stuck_in_loop(traj, k=3):
+            n_loops += 1
+
+    # Localization: walk preds.json (matches compute_extra_metrics convention,
+    # denominator is full subset size).
+    n_localized = 0
+    n_localized_denom = 0
+    if gold_patches:
+        for inst_id in instance_ids:
+            entry = preds.get(inst_id)
+            if not entry:
+                continue
+            patch = (entry.get("model_patch") or "").strip()
+            if not patch:
+                continue
+            gold = gold_patches.get(inst_id)
+            if gold is None:
+                continue
+            n_localized_denom += 1
+            if localized(patch, gold):
+                n_localized += 1
+
     submitted = exit_counts.get("Submitted", 0)
     n = len(instance_ids)
 
@@ -179,6 +284,10 @@ def compute_stats(run_dir: Path, instance_ids: set[str]) -> dict:
         "avg_total_cost": (total_cost + total_prm_cost) / n if n else 0,
         "exit_counts": dict(exit_counts),
         "submitted": submitted,
+        "n_localized": n_localized,
+        "n_localized_denom": n_localized_denom,
+        "n_loops": n_loops,
+        "n_traj_seen": n_traj_seen,
     }
 
 
@@ -202,7 +311,8 @@ def traj_steps(traj: dict) -> int:
 
 
 def compute_fallback_stats(prm_dir: Path, base_dir: Path,
-                           instance_ids: set[str]) -> dict:
+                           instance_ids: set,
+                           gold_patches: dict | None = None) -> dict:
     """Compute fallback-only stats: for instances where PRM didn't submit,
     what do we get from the base CWM run?"""
     prm_resolved = set()
@@ -217,6 +327,20 @@ def compute_fallback_stats(prm_dir: Path, base_dir: Path,
         with open(base_report) as f:
             base_resolved = set(json.load(f).get("resolved_ids", []))
 
+    # Preds for combined localization computation.
+    prm_preds = {}
+    base_preds = {}
+    try:
+        with open(prm_dir / "preds.json") as f:
+            prm_preds = json.load(f)
+    except Exception:
+        pass
+    try:
+        with open(base_dir / "preds.json") as f:
+            base_preds = json.load(f)
+    except Exception:
+        pass
+
     fb_resolved = 0
     fb_steps = 0
     fb_cost = 0.0
@@ -224,6 +348,9 @@ def compute_fallback_stats(prm_dir: Path, base_dir: Path,
     n_fallback = 0
     combined_resolved = 0
     prm_submitted = 0
+    fb_loops = 0
+    fb_traj_seen = 0
+    prm_submitted_loops = 0  # loops in PRM trajs that *did* submit
 
     for instance_id in sorted(instance_ids):
         prm_traj = load_traj(prm_dir, instance_id)
@@ -233,6 +360,8 @@ def compute_fallback_stats(prm_dir: Path, base_dir: Path,
         prm_exit = prm_traj.get("info", {}).get("exit_status", "unknown")
         if prm_exit == "Submitted":
             prm_submitted += 1
+            if is_stuck_in_loop(prm_traj, k=3):
+                prm_submitted_loops += 1
             if instance_id in prm_resolved:
                 combined_resolved += 1
         else:
@@ -243,11 +372,39 @@ def compute_fallback_stats(prm_dir: Path, base_dir: Path,
                 fb_exit_counts[base_exit] += 1
                 fb_steps += traj_steps(base_traj)
                 fb_cost += recompute_model_cost(base_traj)
+                fb_traj_seen += 1
+                if is_stuck_in_loop(base_traj, k=3):
+                    fb_loops += 1
                 if instance_id in base_resolved:
                     fb_resolved += 1
                     combined_resolved += 1
 
     fb_submitted = fb_exit_counts.get("Submitted", 0)
+
+    # Combined localization: PRM patch when PRM submitted, else base patch.
+    combined_localized = 0
+    combined_localized_denom = 0
+    if gold_patches:
+        for inst_id in instance_ids:
+            prm_traj = load_traj(prm_dir, inst_id)
+            if prm_traj is None:
+                continue
+            prm_exit = prm_traj.get("info", {}).get("exit_status", "unknown")
+            if prm_exit == "Submitted":
+                entry = prm_preds.get(inst_id)
+            else:
+                entry = base_preds.get(inst_id)
+            if not entry:
+                continue
+            patch = (entry.get("model_patch") or "").strip()
+            if not patch:
+                continue
+            gold = gold_patches.get(inst_id)
+            if gold is None:
+                continue
+            combined_localized_denom += 1
+            if localized(patch, gold):
+                combined_localized += 1
 
     return {
         "n_fallback": n_fallback,
@@ -259,6 +416,11 @@ def compute_fallback_stats(prm_dir: Path, base_dir: Path,
         "combined_resolved": combined_resolved,
         "combined_submitted": prm_submitted + fb_submitted,
         "n_subset": len(instance_ids),
+        "fb_loops": fb_loops,
+        "fb_traj_seen": fb_traj_seen,
+        "prm_submitted_loops": prm_submitted_loops,
+        "combined_localized": combined_localized,
+        "combined_localized_denom": combined_localized_denom,
     }
 
 
@@ -285,6 +447,10 @@ def main():
     print(f"Reference: {REFERENCE_RUN}", file=sys.stderr)
     print(f"Subset size: {n} instances\n", file=sys.stderr)
 
+    print("Loading gold patches...", file=sys.stderr)
+    gold_patches = load_gold_patches()
+    print(f"  {len(gold_patches)} gold patches loaded", file=sys.stderr)
+
     all_stats = []
     for group, experiment, prm_label, dirname in RUNS:
         run_dir = parent / dirname
@@ -298,7 +464,7 @@ def main():
             print("NO REPORT (skipping)", file=sys.stderr)
             all_stats.append((group, experiment, prm_label, None))
             continue
-        stats = compute_stats(run_dir, instance_ids)
+        stats = compute_stats(run_dir, instance_ids, gold_patches=gold_patches)
         print(f"found {stats['n_found']}/{n}, resolved {stats['resolved']}", file=sys.stderr)
         if stats["n_missing"] > 0:
             print(f"    WARNING: {stats['n_missing']} missing instances", file=sys.stderr)
@@ -315,7 +481,8 @@ def main():
             prm_dir = parent / dirname
             if not prm_dir.exists() or not (prm_dir / "report.json").exists():
                 continue
-            fb = compute_fallback_stats(prm_dir, base_dir, instance_ids)
+            fb = compute_fallback_stats(prm_dir, base_dir, instance_ids,
+                                        gold_patches=gold_patches)
             print(f"  {group} / {experiment}: {fb['n_fallback']} fallback, "
                   f"+{fb['fb_resolved']} resolved from base, "
                   f"combined {fb['combined_resolved']}", file=sys.stderr)
@@ -332,7 +499,14 @@ def main():
         f"Avg Model Cost ($) (/{n})",
         f"Avg PRM Cost ($) (/{n})",
         f"Avg Total Cost ($) (/{n})",
+        f"Localization (/{n})",
+        f"Stuck-in-loop (/{n})",
     ]
+
+    def _pct(num: int, denom: int) -> str:
+        if not denom:
+            return "N/A"
+        return f"{100 * num / denom:.2f}"
 
     stats_rows = []
     for (group, experiment, prm_label, stats), (_, _, _, dirname) in zip(
@@ -349,6 +523,8 @@ def main():
             f"{stats['avg_model_cost']:.3f}",
             f"{stats['avg_prm_cost']:.3f}",
             f"{stats['avg_total_cost']:.3f}",
+            _pct(stats["n_localized"], n),
+            _pct(stats["n_loops"], n),
         ])
         if dirname in fallback_map:
             fb = fallback_map[dirname]
@@ -359,6 +535,9 @@ def main():
             total_model_cost = stats["avg_model_cost"] + fb["fb_cost"] / n
             total_prm_cost = stats["avg_prm_cost"]
             total_cost = total_model_cost + total_prm_cost
+            # Combined loop count: PRM-submitted instances use PRM traj loops,
+            # fallback instances use base traj loops.
+            combined_loops = fb["prm_submitted_loops"] + fb["fb_loops"]
             stats_rows.append([
                 group, f"{experiment} + base fallback",
                 str(combined_res),
@@ -369,6 +548,8 @@ def main():
                 f"{total_model_cost:.3f}",
                 f"{total_prm_cost:.3f}",
                 f"{total_cost:.3f}",
+                _pct(fb["combined_localized"], n),
+                _pct(combined_loops, n),
             ])
 
     print(f"\n=== Full SWE-Bench Verified ({n} samples) - Stats ===")

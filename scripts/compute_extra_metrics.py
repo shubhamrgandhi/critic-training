@@ -11,6 +11,10 @@ Both metrics read from preds.json + traj.json and the SWE-bench Verified
 dataset's gold 'patch' column. Nothing is written to existing files; output
 is printed to stdout.
 
+This module is a thin wrapper around the helpers in
+``get_stats_full500_prefix.py`` so the underlying definitions stay in one
+place.
+
 Usage:
     python3 compute_extra_metrics.py <results_dir> [<results_dir2> ...]
     python3 compute_extra_metrics.py --preds-file preds-autosubmit.json <results_dir>
@@ -20,88 +24,31 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from get_stats_full500_prefix import (
+    files_in_patch,
+    is_stuck_in_loop,
+    load_gold_patches,
+    localized,
+    normalize_file_path,
+)
 
-DIFF_FILE_RE = re.compile(r"^diff --git a/(\S+) b/", re.MULTILINE)
-BASH_BLOCK_RE = re.compile(r"```bash\n(.*?)\n```", re.DOTALL)
-
-
-def load_gold_patches(dataset: str = "princeton-nlp/SWE-bench_Verified", split: str = "test") -> dict[str, str]:
-    """Return {instance_id: gold patch string}."""
-    from datasets import load_dataset
-    ds = load_dataset(dataset, split=split)
-    return {row["instance_id"]: row["patch"] for row in ds}
-
-
-def files_in_patch(patch: str) -> set[str]:
-    if not patch:
-        return set()
-    return set(DIFF_FILE_RE.findall(patch))
-
-
-def normalize_file_path(p: str) -> str:
-    """SWE-bench gold patches use repo-relative paths. Agent patches are
-    against /testbed (the cloned repo at base_commit). Both should already be
-    repo-relative because git diff produces a/<repo-relative> b/<repo-relative>.
-    Strip any leading ./ or testbed/ prefix just in case."""
-    if p.startswith("./"):
-        p = p[2:]
-    if p.startswith("testbed/"):
-        p = p[len("testbed/"):]
-    return p
-
-
-def localized(model_patch: str, gold_patch: str) -> bool:
-    """File-level recall: at least one file the agent modified appears in the
-    gold patch's file set. This is the convention most SWE-bench papers report
-    (Agentless, SWE-agent analyses, etc.)."""
-    m = {normalize_file_path(f) for f in files_in_patch(model_patch)}
-    g = {normalize_file_path(f) for f in files_in_patch(gold_patch)}
-    if not m or not g:
-        return False
-    return bool(m & g)
-
-
-def is_stuck_in_loop(traj: dict, k: int = 3) -> bool:
-    """True if the agent emits the same bash command in K consecutive assistant
-    steps at any point in the trajectory.
-
-    We compare the extracted bash command (the first triple-backticked block)
-    rather than the full assistant message, so that loop detection is about
-    repeated *actions*, not repeated reasoning text. Falls back to full content
-    if no bash block found.
-    """
-    msgs = traj.get("messages", [])
-    cmds: list[str] = []
-    for m in msgs:
-        if not isinstance(m, dict) or m.get("role") != "assistant":
-            continue
-        content = m.get("content") or ""
-        if not isinstance(content, str):
-            content = str(content)
-        bashes = BASH_BLOCK_RE.findall(content)
-        if len(bashes) == 1:
-            cmds.append(bashes[0].strip())
-        else:
-            # Format error or no/multiple bash blocks — treat as the raw text
-            cmds.append(content.strip())
-
-    if len(cmds) < k:
-        return False
-    for i in range(len(cmds) - k + 1):
-        window = cmds[i : i + k]
-        if all(c == window[0] for c in window):
-            return True
-    return False
+__all__ = [
+    "files_in_patch",
+    "is_stuck_in_loop",
+    "load_gold_patches",
+    "localized",
+    "normalize_file_path",
+    "analyze_run",
+]
 
 
 def analyze_run(
     results_dir: Path,
-    gold_patches: dict[str, str],
+    gold_patches: dict,
     preds_filename: str = "preds.json",
 ) -> dict:
     preds_path = results_dir / preds_filename
@@ -111,13 +58,10 @@ def analyze_run(
 
     n_total = len(preds)
 
-    # Submission detection: a "submitted" pred has a non-empty patch (matches
-    # the SWE-bench convention where empty patches are categorized separately).
     n_with_patch = sum(1 for v in preds.values() if (v.get("model_patch") or "").strip())
 
-    # Localization
     n_localized = 0
-    n_localized_denom = 0  # patches we could check (have patch and gold)
+    n_localized_denom = 0
     for inst_id, entry in preds.items():
         patch = (entry.get("model_patch") or "").strip()
         if not patch:
@@ -129,7 +73,6 @@ def analyze_run(
         if localized(patch, gold):
             n_localized += 1
 
-    # Stuck-in-loop: walk trajectories
     n_loops = 0
     n_traj_seen = 0
     for inst_id in preds:
@@ -144,7 +87,6 @@ def analyze_run(
         if is_stuck_in_loop(traj, k=3):
             n_loops += 1
 
-    # Resolved (from existing report.json if present, for context)
     n_resolved = None
     report_path = results_dir / "report.json"
     if report_path.exists():
