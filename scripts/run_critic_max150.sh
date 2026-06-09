@@ -45,6 +45,8 @@ STEP_LIMIT=""
 API_BASE=""
 PRM_DEDUP=""
 PRM_DEDUP_THRESHOLD=""
+PREFIX_DIR=""
+COST_LIMIT=""
 
 # Parse optional overrides
 while [[ $# -gt 0 ]]; do
@@ -61,6 +63,8 @@ while [[ $# -gt 0 ]]; do
     --step-limit)   STEP_LIMIT="$2";  shift 2 ;;
     --prm-dedup)    PRM_DEDUP="true"; shift ;;
     --prm-dedup-threshold) PRM_DEDUP_THRESHOLD="$2"; shift 2 ;;
+    --prefix-dir)   PREFIX_DIR="$2";  shift 2 ;;
+    --cost-limit)   COST_LIMIT="$2";  shift 2 ;;
     *)              echo "Unknown option: $1"; shift ;;
   esac
 done
@@ -69,7 +73,19 @@ done
 FULL_SETTING="singularity_edit_obs_final_only_${SETTING}_k${PRM_INTERVAL}"
 CONFIG="${SCRIPT_DIR}/../mini-swe-agent/configs/swebench_${FULL_SETTING}_${RUN}_${AGENT_MODEL}_max150.yaml"
 EFFECTIVE_STEPS="${STEP_LIMIT:-150}"
-OUTPUT="${SCRIPT_DIR}/../results_singularity_max_${EFFECTIVE_STEPS}_steps/${FULL_SETTING}_${RUN}_${AGENT_MODEL}_prm_${PRM_NAME}"
+
+# Strip "<org>/" prefix from PRM_NAME for path-naming purposes (keeps the actual
+# served-name unchanged for API calls, just drops the org from the dir name).
+PRM_NAME_FOR_PATH="${PRM_NAME##*/}"
+
+# Output dir: when --prefix-dir is provided, land in results_..._steps_prefix/
+# (matches the convention for prefix-replay runs); otherwise the regular dir.
+if [ -n "$PREFIX_DIR" ]; then
+    RESULTS_ROOT="results_singularity_max_${EFFECTIVE_STEPS}_steps_prefix"
+else
+    RESULTS_ROOT="results_singularity_max_${EFFECTIVE_STEPS}_steps"
+fi
+OUTPUT="${SCRIPT_DIR}/../${RESULTS_ROOT}/${FULL_SETTING}_${RUN}_${AGENT_MODEL}_prm_${PRM_NAME_FOR_PATH}"
 
 if [ ! -f "$CONFIG" ]; then
     echo "ERROR: Config not found: $CONFIG"
@@ -181,10 +197,10 @@ else
     trap "rm -f $TEMP_CONFIG" EXIT
 
     python3 - "$CONFIG" "$TEMP_CONFIG" \
-        "$AGENT_API_BASE" "$PRM_MODEL_NAME" "$PRM_API_BASE" "" "openai" "$DISABLE_THINKING" "$STEP_LIMIT" "$PRM_DEDUP" "$PRM_DEDUP_THRESHOLD" <<'PYEOF'
+        "$AGENT_API_BASE" "$PRM_MODEL_NAME" "$PRM_API_BASE" "" "openai" "$DISABLE_THINKING" "$STEP_LIMIT" "$PRM_DEDUP" "$PRM_DEDUP_THRESHOLD" "$PREFIX_DIR" "$COST_LIMIT" <<'PYEOF'
 import yaml, sys
 
-base_config, temp_config, agent_api_base, prm_model_name, prm_api_base, prm_api_key, prm_provider, disable_thinking, step_limit, prm_dedup, prm_dedup_threshold = sys.argv[1:]
+base_config, temp_config, agent_api_base, prm_model_name, prm_api_base, prm_api_key, prm_provider, disable_thinking, step_limit, prm_dedup, prm_dedup_threshold, prefix_dir, cost_limit = sys.argv[1:]
 
 with open(base_config) as f:
     cfg = yaml.safe_load(f)
@@ -196,6 +212,10 @@ if prm_dedup == 'true':
     cfg.setdefault('agent', {})['prm_dedup'] = True
 if prm_dedup_threshold:
     cfg.setdefault('agent', {})['prm_dedup_threshold'] = float(prm_dedup_threshold)
+if prefix_dir:
+    cfg.setdefault('agent', {})['prefix_trajectory_dir'] = prefix_dir
+if cost_limit:
+    cfg.setdefault('agent', {})['cost_limit'] = float(cost_limit)
 
 # Override agent model api_base
 cfg['model']['model_kwargs']['api_base'] = agent_api_base
