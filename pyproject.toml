@@ -55,19 +55,10 @@ docker = [
 ]
 
 [tool.uv]
-# Keep the lockfile reproducible across CUDA/CPU torch builds.
-# Override the torch index via UV_EXTRA_INDEX_URL if your cluster needs a
-# specific cu12x build.
+# This repo isn't itself a Python package — it's a workspace of scripts that
+# depend on the mini-swe-agent fork below. Tell uv to skip building it.
+package = false
 
 [tool.uv.sources]
 # Forked mini-swe-agent in this repo (PRM hooks, prefix replay, etc.).
 mini-swe-agent = { path = "mini-swe-agent", editable = true }
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-# This repo isn't itself a python package — it's a workspace of scripts.
-# Keep an empty-but-valid wheel target so `uv sync` works.
-packages = []
