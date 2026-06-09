@@ -6,8 +6,7 @@
 #SBATCH --time=48:00:00
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=400G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
+# Add your own --mail-user / --mail-type lines if you want SLURM email notifications.
 
 mkdir -p sbatch_logs
 

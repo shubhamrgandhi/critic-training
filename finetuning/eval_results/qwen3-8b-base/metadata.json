@@ -2,7 +2,7 @@
   "model_name": "Qwen/Qwen3-8B",
   "model_label": "qwen3-8b-base",
   "api_base": "http://localhost:8072/v1",
-  "data_path": "/home/srgandhi/tool-overuse/finetuning/prm_sft_data_opus_distill_full_feedback_history_32k/prm_sft_train.jsonl",
+  "data_path": "<repo_root>/finetuning/prm_sft_data_opus_distill_full_feedback_history_32k/prm_sft_train.jsonl",
   "n_samples": 2393,
   "n_errors": 0,
   "disable_thinking": true,

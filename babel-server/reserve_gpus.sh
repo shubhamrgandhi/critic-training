@@ -6,9 +6,8 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:L40S:8
 #SBATCH --mem=400G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
-#SBATCH --exclude="babel-v9-28"
+# Add your own --mail-user / --mail-type / --exclude lines here if you want
+# SLURM email notifications or want to exclude flaky nodes.
 
 
 mkdir -p sbatch_logs

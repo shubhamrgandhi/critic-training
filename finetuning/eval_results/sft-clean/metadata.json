@@ -2,7 +2,7 @@
   "model_name": "qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_clean",
   "model_label": "sft-clean",
   "api_base": "http://babel-s5-32:8071/v1",
-  "data_path": "/home/srgandhi/tool-overuse/finetuning/prm_sft_data_opus_distill_full_feedback_history_32k/prm_sft_train.jsonl",
+  "data_path": "<repo_root>/finetuning/prm_sft_data_opus_distill_full_feedback_history_32k/prm_sft_train.jsonl",
   "n_samples": 2393,
   "n_errors": 0,
   "disable_thinking": true,

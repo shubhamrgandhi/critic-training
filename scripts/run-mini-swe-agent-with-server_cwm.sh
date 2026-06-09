@@ -6,10 +6,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:L40S:8
 #SBATCH --mem=256G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
-#SBATCH --exclude="babel-o5-28 babel-p9-20"
-
+# Add your own --mail-user / --mail-type / --exclude lines if you want them.
 
 # =============================================================================
 # Combined vLLM Server + Mini-SWE-Agent (CWM base, no PRM)
@@ -50,26 +47,27 @@ done
 source ~/.bashrc
 conda activate vllm
 
-export HF_HOME=/data/user_data/srgandhi/cache
-export TRANSFORMERS_CACHE=/data/user_data/srgandhi/cache
-export HF_HUB_CACHE=/data/user_data/srgandhi/cache/hub
-mkdir -p /data/user_data/srgandhi/cache
+export HF_HOME=/data/user_data/$USER/cache
+export TRANSFORMERS_CACHE=/data/user_data/$USER/cache
+export HF_HUB_CACHE=/data/user_data/$USER/cache/hub
+mkdir -p /data/user_data/$USER/cache
 
-export TMPDIR=/data/user_data/srgandhi/tmp
-export SINGULARITY_TMPDIR=/data/user_data/srgandhi/tmp
-export APPTAINER_TMPDIR=/data/user_data/srgandhi/tmp
+export TMPDIR=/data/user_data/$USER/tmp
+export SINGULARITY_TMPDIR=/data/user_data/$USER/tmp
+export APPTAINER_TMPDIR=/data/user_data/$USER/tmp
 mkdir -p $TMPDIR
 
-cd /home/srgandhi/tool-overuse/scripts
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT/scripts"
 
 mkdir -p ../babel-server/sbatch_logs
 mkdir -p ../babel-server/vllm_logs
 
 COMPUTE_NODE=$(hostname)
 
-CONFIGS_DIR="/home/srgandhi/tool-overuse/mini-swe-agent/configs"
+CONFIGS_DIR="$REPO_ROOT/mini-swe-agent/configs"
 CONFIG="${CONFIGS_DIR}/swebench_singularity_edit_obs_final_only_0_${MODEL_NAME}.yaml"
-RESULTS_DIR="/home/srgandhi/tool-overuse/results_singularity"
+RESULTS_DIR="$REPO_ROOT/results_singularity"
 OUTPUT="${RESULTS_DIR}/singularity_edit_obs_final_only_0_${MODEL_NAME}"
 
 echo "=============================================="
@@ -193,7 +191,7 @@ echo "===================="
 echo ""
 echo "[3/3] Running mini-swe-agent..."
 
-conda activate tool-overuse
+conda activate "${CONDA_ENV:-critic-training}"
 
 mkdir -p ../agent_logs
 

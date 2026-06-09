@@ -7,12 +7,14 @@
 #SBATCH --gres=gpu:L40S:4
 #SBATCH --partition=preempt
 #SBATCH --mem=200G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
+# Add your own --mail-user / --mail-type / --exclude lines here if you want
+# SLURM email notifications or want to exclude flaky nodes.
 
-MODEL="${MODEL:-/data/user_data/srgandhi/saves/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_rejection-sample_think}"
-SERVED_NAME="qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6_rejection-sample_think"
-PORT=8071
+# Path to your trained PRM checkpoint. Override via --model or by exporting MODEL.
+SAVES_DIR="${SAVES_DIR:-/data/user_data/$USER/saves}"
+MODEL="${MODEL:-$SAVES_DIR/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6-multiturn}"
+SERVED_NAME="${SERVED_NAME:-$(basename "$MODEL")}"
+PORT="${PORT:-8071}"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -25,14 +27,15 @@ done
 source ~/.bashrc
 conda activate vllm
 
-export HF_HOME=/data/user_data/srgandhi/cache
-export TRANSFORMERS_CACHE=/data/user_data/srgandhi/cache
-export HF_HUB_CACHE=/data/user_data/srgandhi/cache/hub
+CACHE_DIR="${CACHE_DIR:-/data/user_data/$USER/cache}"
+export HF_HOME="$CACHE_DIR"
+export TRANSFORMERS_CACHE="$CACHE_DIR"
+export HF_HUB_CACHE="$CACHE_DIR/hub"
 export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=3600
 export NCCL_P2P_DISABLE=1
-mkdir -p /data/user_data/srgandhi/cache
+mkdir -p "$CACHE_DIR"
 
-cd /home/srgandhi/babel-server
+cd "$(dirname "${BASH_SOURCE[0]}")"
 mkdir -p vllm_logs sbatch_logs
 
 COMPUTE_NODE=$(hostname)

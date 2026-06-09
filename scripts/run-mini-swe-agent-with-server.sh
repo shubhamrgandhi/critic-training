@@ -6,8 +6,6 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:L40S:4
 #SBATCH --mem=256G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
 #SBATCH --exclude="babel-n9-28,babel-n9-32"
 
 # =============================================================================
@@ -72,19 +70,19 @@ done
 source ~/.bashrc
 conda activate vllm
 
-export HF_HOME=/data/user_data/srgandhi/cache
-export TRANSFORMERS_CACHE=/data/user_data/srgandhi/cache
-export HF_HUB_CACHE=/data/user_data/srgandhi/cache/hub
-mkdir -p /data/user_data/srgandhi/cache
+export HF_HOME=/data/user_data/$USER/cache
+export TRANSFORMERS_CACHE=/data/user_data/$USER/cache
+export HF_HUB_CACHE=/data/user_data/$USER/cache/hub
+mkdir -p /data/user_data/$USER/cache
 
 # Use a temp directory with more space for Singularity builds
-export TMPDIR=/data/user_data/srgandhi/tmp
-export SINGULARITY_TMPDIR=/data/user_data/srgandhi/tmp
-export APPTAINER_TMPDIR=/data/user_data/srgandhi/tmp
+export TMPDIR=/data/user_data/$USER/tmp
+export SINGULARITY_TMPDIR=/data/user_data/$USER/tmp
+export APPTAINER_TMPDIR=/data/user_data/$USER/tmp
 mkdir -p $TMPDIR
 
 # Navigate to project directory
-cd /home/srgandhi/tool-overuse/scripts
+cd $REPO_ROOT/scripts
 
 # Create log directories
 mkdir -p ../../babel-server/sbatch_logs
@@ -237,7 +235,7 @@ echo ""
 echo "[3/3] Running mini-swe-agent..."
 
 # Activate the mini-swe-agent environment
-conda activate tool-overuse
+conda activate "${CONDA_ENV:-critic-training}"
 
 # Create agent log directory
 mkdir -p ../agent_logs
@@ -259,8 +257,8 @@ EXPERIMENTS=(
 )
 
 MODEL_NAME="${MODEL_NAME:-Devstral-Small-2507}"
-CONFIGS_DIR="/home/srgandhi/tool-overuse/mini-swe-agent/configs"
-RESULTS_DIR="/home/srgandhi/tool-overuse/results_singularity"
+CONFIGS_DIR="$REPO_ROOT/mini-swe-agent/configs"
+RESULTS_DIR="$REPO_ROOT/results_singularity"
 
 OVERALL_EXIT_CODE=0
 

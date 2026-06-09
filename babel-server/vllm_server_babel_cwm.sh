@@ -6,9 +6,8 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:L40S:8
 #SBATCH --mem=400G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
-#SBATCH --exclude="babel-q5-20, babel-q5-16"
+# Add your own --mail-user / --mail-type / --exclude lines here if you want
+# SLURM email notifications or want to exclude flaky nodes.
 
 
 # Default values
@@ -36,13 +35,15 @@ done
 source ~/.bashrc
 conda activate vllm
 
-export HF_HOME=/data/user_data/srgandhi/cache
-export TRANSFORMERS_CACHE=/data/user_data/srgandhi/cache
-export HF_HUB_CACHE=/data/user_data/srgandhi/cache/hub
-mkdir -p /data/user_data/srgandhi/cache
+# HF cache. Override CACHE_DIR before submitting if you want a different dir.
+CACHE_DIR="${CACHE_DIR:-/data/user_data/$USER/cache}"
+export HF_HOME="$CACHE_DIR"
+export TRANSFORMERS_CACHE="$CACHE_DIR"
+export HF_HUB_CACHE="$CACHE_DIR/hub"
+mkdir -p "$CACHE_DIR"
 
 # Navigate to script directory
-cd /home/srgandhi/babel-server
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # Create log directories
 mkdir -p vllm_logs

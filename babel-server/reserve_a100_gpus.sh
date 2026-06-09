@@ -6,8 +6,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gres=gpu:A100_80GB:8
 #SBATCH --mem=400G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
+# Add your own --mail-user / --mail-type lines if you want SLURM email notifications.
 
 mkdir -p sbatch_logs
 

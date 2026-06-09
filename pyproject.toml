@@ -1,9 +1,73 @@
 [project]
-name = "tool-overuse"
+name = "critic-training"
 version = "0.1.0"
-description = "Add your description here"
+description = "SFT-trained step-level critic for software-engineering agents on SWE-bench Verified and R2E-Gym, using mini-swe-agent."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "docent-python>=0.1.68",
+    # ML / training. Pinned at major versions matching the working critic-training env.
+    # The trained critic was produced with torch 2.9.1 + transformers 4.57.6;
+    # bumping transformers to 5.x or torch to 3.x is untested.
+    "torch>=2.9,<3",
+    "transformers>=4.50,<5",
+    "accelerate>=1.0,<2",
+    "datasets>=4.0,<5",
+    "huggingface-hub>=0.30,<1",
+    "peft>=0.13,<1",                    # LoRA
+    "liger-kernel>=0.5",                # FSDP fused kernels (used in our train recipe)
+
+    # Inference clients / LiteLLM
+    "openai>=1.50,!=1.100.0,!=1.100.1", # avoid known-broken openai versions per mini-swe-agent
+    "litellm>=1.75",
+    "tiktoken>=0.7",                    # token counting
+
+    # Agent / mini-swe-agent local fork (path source — see [tool.uv.sources])
+    "mini-swe-agent",
+
+    # Stats / plotting
+    "numpy>=2.0",
+    "matplotlib>=3.9",
+    "rouge-score>=0.1.2",
+    "nltk>=3.9",
+
+    # Misc
+    "pyyaml>=6.0",
+    "tqdm>=4.65",
+    "tenacity>=8.0",
+    "requests>=2.30",
+    "python-dotenv>=1.0",
+    "platformdirs>=4.0",
+    "rich>=13.0",
+    "typer>=0.12",
+    "jinja2>=3.1",
 ]
+
+[project.optional-dependencies]
+# QLoRA training path — needs bitsandbytes for 4-bit quant.
+lora = [
+    "bitsandbytes>=0.43",
+]
+
+# SWE-Rex docker environments. SWE-bench Verified runs on this repo use
+# Singularity/Apptainer instead, so this is opt-in.
+docker = [
+    "swe-rex>=1.4.0",
+]
+
+[tool.uv]
+# Keep the lockfile reproducible across CUDA/CPU torch builds.
+# Override the torch index via UV_EXTRA_INDEX_URL if your cluster needs a
+# specific cu12x build.
+
+[tool.uv.sources]
+# Forked mini-swe-agent in this repo (PRM hooks, prefix replay, etc.).
+mini-swe-agent = { path = "mini-swe-agent", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# This repo isn't itself a python package — it's a workspace of scripts.
+# Keep an empty-but-valid wheel target so `uv sync` works.
+packages = []

@@ -6,28 +6,23 @@
 #SBATCH --time=72:00:00
 #SBATCH --cpus-per-task=24
 #SBATCH --mem=300G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
-#SBATCH --exclude="babel-n5-20,babel-x5-28,babel-w5-32,babel-x5-32"
-#SBATCH --dependency=afterany:8036050
+# Add your own --mail-user / --mail-type / --exclude lines if you want them.
 #
-# Full SWE-bench Verified (500) qwen3-32b base run, extending the existing
-# 0_qwen32b output dir (which already contains 50 mini results).
+# Full SWE-bench Verified (500) qwen3-32b base run.
 # The mini-swe-agent batch runner skips instances already in preds.json,
-# so this only runs the 450 non-mini instances.
+# so re-runs only fill in the missing instances.
 #
 # Submit:
 #   sbatch scripts/run_qwen32b_full500.sh
-#
-# Attach:
-#   ./connect_job.sh <jobid> qwen32b_full
 
 set -o pipefail
 
-source ~/.bashrc 2>/dev/null || true
-conda activate tool-overuse 2>/dev/null || true
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-cd /home/srgandhi/tool-overuse
+source ~/.bashrc 2>/dev/null || true
+conda activate "${CONDA_ENV:-critic-training}" 2>/dev/null || true
+
+cd "$REPO_ROOT"
 mkdir -p sbatch_logs
 
 export APPTAINER_BIND=""
@@ -38,7 +33,7 @@ export SINGULARITY_NO_MOUNT="hostfs"
 export TMPDIR=/scratch
 mkdir -p "$TMPDIR"
 
-export SWEBENCH_SIF_CACHE="${SWEBENCH_SIF_CACHE:-/data/user_data/srgandhi/tool-overuse/sif_cache}"
+export SWEBENCH_SIF_CACHE="${SWEBENCH_SIF_CACHE:-/data/user_data/$USER/critic-training/sif_cache}"
 
 echo "=== qwen32b base run (full 500) starting ==="
 echo "Job ID:        ${SLURM_JOB_ID:-(none)}"
@@ -48,13 +43,13 @@ echo "Cached SIFs:   $(ls $SWEBENCH_SIF_CACHE 2>/dev/null | wc -l)"
 echo "Started:       $(date)"
 echo "============================================="
 
-INNER_SCRIPT="/home/srgandhi/tool-overuse/sbatch_logs/qwen32b_full500_${SLURM_JOB_ID:-manual}_inner.sh"
+INNER_SCRIPT="${REPO_ROOT}/sbatch_logs/qwen32b_full500_${SLURM_JOB_ID:-manual}_inner.sh"
 cat > "$INNER_SCRIPT" <<INNER
 #!/bin/bash
 set -o pipefail
 source ~/.bashrc 2>/dev/null || true
-conda activate tool-overuse 2>/dev/null || true
-cd /home/srgandhi/tool-overuse
+conda activate "${CONDA_ENV:-critic-training}" 2>/dev/null || true
+cd "$REPO_ROOT"
 export TMPDIR=/scratch
 mkdir -p "\$TMPDIR"
 export APPTAINER_BIND=""
@@ -69,7 +64,7 @@ mini-extra swebench \\
   --split test \\
   --workers 20 \\
   --shuffle \\
-  --output /home/srgandhi/tool-overuse/results_singularity_max_150_steps_prefix/singularity_edit_obs_final_only_0_qwen32b
+  --output "$REPO_ROOT"/results_singularity_max_150_steps_prefix/singularity_edit_obs_final_only_0_qwen32b
 
 rc=\$?
 echo

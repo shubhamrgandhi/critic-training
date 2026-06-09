@@ -1,5 +1,5 @@
 {
-  "source_results_dir": "/home/srgandhi/tool-overuse/results_r2egym_swebench/singularity_edit_obs_final_only_prm_issue_res_k5_0_cwm_prm_claude-opus-4-6",
+  "source_results_dir": "<repo_root>/results_r2egym_swebench/singularity_edit_obs_final_only_prm_issue_res_k5_0_cwm_prm_claude-opus-4-6",
   "prm_model": "us.anthropic.claude-opus-4-6-v1",
   "agent_model": "facebook/cwm",
   "prm_interval": 5,

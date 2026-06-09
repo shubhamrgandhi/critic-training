@@ -30,7 +30,11 @@ from get_stats_full500_prefix import (
     recompute_model_cost, recompute_prm_cost as get_prm_cost, load_traj,
 )
 
-ROOT = Path("/home/srgandhi/tool-overuse/results_singularity_max_150_steps_prefix")
+import os
+ROOT = Path(os.environ.get(
+    "RESULTS_ROOT",
+    str(Path(__file__).resolve().parent.parent / "results_singularity_max_150_steps_prefix"),
+))
 TRAINED = "qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-opus-distill-32k-lr5e6-multiturn"
 
 OUT = ROOT / "plots" / "main"

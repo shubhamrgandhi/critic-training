@@ -149,7 +149,8 @@ def analyze_dataset(dataset_path: str, label: str):
 
 
 if __name__ == "__main__":
-    base = "/home/srgandhi/tool-overuse/finetuning"
+    import os
+    base = os.path.dirname(os.path.abspath(__file__))
 
     analyze_dataset(
         f"{base}/prm_sft_data_opus_distill_full_feedback_history_32k/prm_sft_train.jsonl",

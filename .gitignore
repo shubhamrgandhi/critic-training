@@ -1,22 +1,43 @@
+# =============================================================================
+# tool-overuse .gitignore
+# =============================================================================
+# Repo is structured for end-to-end reproduction of:
+#   1. SFT training of the PRM (finetuning/)
+#   2. mini-swe-agent inference with a served PRM critic (scripts/, mini-swe-agent/)
+# Anything not on those two paths is excluded below.
+# =============================================================================
+
+# --- Local environment / caches ---
+.venv/
+.claude/
+*.claude
+__pycache__/
+*.pyc
+
+# --- Local archive dump (kept on disk, never pushed) ---
+# Use _archive/ to stash scripts/files we don't want in the handover but
+# don't want to delete either. Mirrors source layout (e.g. _archive/scripts/foo.py).
+_archive/
+
+# --- Leaked / nested git internals ---
+mini-swe-agent/.git.backup/
+**/.git.backup/
+
+# --- Run artifacts (live on /data/user_data, symlinked into repo) ---
 results*
 judge_analysis*
 judge_swe_bench*
-*.zip
 sample_analysis
 agent_logs
-babel-server/sbatch_logs/
-babel-server/vllm_logs/
-*.claude
-.claude/
-.venv/
-__pycache__/
-*.pyc
-/connect_job.sh
-/reserve_cpus.sh
 sbatch_logs/
 vllm_logs/
+logs/
+*.zip
 
-# AWS / Bedrock / SageMaker (excluded from handover; recipient uses Babel)
+babel-server/sbatch_logs/
+babel-server/vllm_logs/
+
+# --- AWS / Bedrock / SageMaker / RunPod / EC2 (excluded; recipient is Babel-only) ---
 scripts/aws_*.sh
 scripts/aws_*.log
 scripts/test_bedrock_opus.py
@@ -24,24 +45,159 @@ scripts/test_richard_bedrock.py
 scripts/test_sagemaker_prm.py
 scripts/run_qwen_bedrock.sh
 scripts/delete_richard_key.sh
+scripts/vllm_server_runpod.sh
+scripts/setup_tunnel_runpod.sh
+scripts/test_tunnel.sh
 
+# --- AWS-coupled orchestrators (call aws_eval.sh internally) ---
+scripts/orchestrate_d_trained_chain.sh
+scripts/orchestrate_dc_step_aware_evals.sh
+scripts/orchestrate_dc_step_aware_k5_evals.sh
+scripts/watch_qwen_evals.sh
+scripts/watch_qwen380b_k5_dc_sa.sh
+
+# --- Stale / duplicate / one-off scripts ---
+scripts/run-judge.py
+scripts/run-judge.sh
+scripts/run-judge-policy.py
+scripts/run-judge-parallel.py
+scripts/run-judge-parallel copy.py
+scripts/run-judge-policy-majority-vote_v0.py
+scripts/run-judge-policy-majority-vote_v1.py
+
+# Earlier stats/analysis revisions, superseded by *_v2 / canonical scripts
+scripts/get_stats.py
+scripts/get_stats_full500.py
+scripts/get_stats_mini50.py
+scripts/get_stats_table.py
+scripts/get_stats_subset.py
+scripts/get_stats_subset_capped.py
+scripts/get_stats_full500_75steps.py
+scripts/plot_resolved_vs_steps.py
+scripts/plot_resolved_vs_step_limit.py
+scripts/plot_resolved_vs_steps_full500.py
+scripts/analyze_wastage.py
+scripts/analyze_wastage_v0.py
+scripts/analyze_wastage_both.py
+scripts/wastage_variance.py
+scripts/loop_analysis.py
+scripts/venn_diagram.py
+scripts/critic_feedback_distribution.py
+scripts/analyze_judge_consensus.py
+scripts/analyze_prm_feedback_format.py
+scripts/iaa.py
+scripts/sample.py
+scripts/test.py
+
+# Infra fixups, fallback re-runs, ad-hoc cleanups
+scripts/run_qwen32b_run1_fallback1.sh
+scripts/run_qwen32b_run1_fallback118.sh
+scripts/run_qwen3_80b_run1_fallback35.sh
+scripts/delete_retry_error.py
+scripts/remove_calledprocesserror_instances.py
+scripts/docker_cleanup.sh
+scripts/prepull_swebench_sifs.sh
+scripts/run_prepull_swebench_sifs.sh
+scripts/save_swebench_api_key.sh
+scripts/check_model_determinism.py
+scripts/check_model_determinism_standalone.py
+scripts/determinism_check.py
+scripts/clean_preds_venv.py
+scripts/clean_traj_venv.py
+scripts/autosubmit_replay.py
+scripts/autosubmit_slurm.sh
+scripts/eval_autosubmit.sh
+scripts/eval_cwm.sh
+scripts/eval.sh
+scripts/openhands_critic_select.py
+scripts/run_judge_sampling_wrapper.py
+scripts/claude_litellm_strip_proxy.py
+scripts/ensure_claude_litellm_proxy.sh
+scripts/run_single.sh
+scripts/run-mini-swe-agent.sh
+scripts/run_r2egym_prm.sh
+scripts/run_qwen3_80b_r2egym_datagen_concise_k5.sh
+scripts/prompt.txt
+
+# --- 23 paper-sweep PRM launchers (use parametric run_prm_max150.sh instead) ---
+scripts/run_prm_qwen32b_full500_*.sh
+scripts/run_prm_qwen3_32b_full500_*.sh
+scripts/run_prm_qwen3_80b_full500_*.sh
+scripts/run_prm_issue_res_*.sh
+scripts/run_prm_all_no_server.sh
+scripts/run_prm_debug_experiments.sh
+scripts/run_mini-swe-agent_prm_*.sh
+
+# --- Non-headline agent launchers (kept models: cwm, qwen3-32b, qwen3-next-80b) ---
+scripts/run-mini-swe-agent_Devstral-Small-2507*.sh
+scripts/run-mini-swe-agent_Mistral-Small-3.1-24B-Base-2503.sh
+scripts/run-mini-swe-agent_Qwen25-Coder-32B-Instruct*.sh
+scripts/run-mini-swe-agent_Qwen3-Coder-30B-A3B-Instruct*.sh
+scripts/run-mini-swe-agent_SWE-agent-LM-32B*.sh
+scripts/run-mini-swe-agent_cwm-pretrain.sh
+scripts/run-mini-swe-agent_cwm-sft*.sh
+scripts/run-mini-swe-agent_cwm_dev.sh
+scripts/run-mini-swe-agent-with-server_cwm_prm_*.sh
+
+# --- Stale exploration / paper-only dirs ---
 openhands-critic/
 manual_analysis/
+human_annotation_csvs/
+iaa/
+paper-context/
+/paper
 
-# Large data files (GitHub 100MB limit)
-finetuning/prm_sft_data_*/prm_sft_train.jsonl
-finetuning/prm_sft_data_*/prm_sft_val.jsonl
+# --- Ad-hoc analysis at repo root ---
+analyze_prm_*.py
+prm_failure_case_study.md
+prm_postprocessing_examples.md
+prm_trajectory_analysis.txt
+HANDOVER.md.bak
+
+# --- Root helpers (user-specific) ---
+/connect_job.sh
+/reserve_cpus.sh
+
+# --- babel-server stale variants ---
+babel-server/vllm_server_babel_qwen3-8b-opus-distill-clean.sh
+babel-server/vllm_server_babel_qwen3-8b-opus-distill-clean_think.sh
+babel-server/vllm_server_babel_qwen3-8b-opus-distill-rejection-sample.sh
+babel-server/vllm_server_babel_qwen3-8b-opus-distill-rejection-sample_think.sh
+babel-server/vllm_server_babel_qwen3-8b.sh
+
+# --- finetuning/ stale variants ---
+finetuning/run_qwen3_8b_prm_full_sft.sh
+finetuning/run_qwen3_8b_prm_full_sft_l40s_think.sh
+finetuning/qwen3_8b_prm_full_sft_train.yaml
+finetuning/qwen3_8b_prm_full_sft_l40s_train_think.yaml
+finetuning/fsdp_config.yaml
+finetuning/checkpoints.json
+finetuning/test_thinking.py
+finetuning/debug_echo_by_invocation.py
+finetuning/debug_inference_echoing.py
+finetuning/THINKING_ISSUE.md
+finetuning/eval_results_temp0.6_bad_rs/
+finetuning/eval_results_noisy/
+finetuning/eval_results_nonuniform/
+finetuning/eval_results/*-think/
+finetuning/eval_results/*think*/
+
+# --- Non-retained training data dirs (keep only the 3 r2egym_swebench_k5 dirs) ---
+finetuning/prm_sft_data_opus_distill_full_feedback_history_32k/
+finetuning/prm_sft_data_opus_distill_full_feedback_history_32k_noisy/
+finetuning/prm_sft_data_opus_distill_full_feedback_history_32k_rejection-sample/
+finetuning/prm_sft_instructions_k10_opus_distill_32k_flattened/
+finetuning/prm_sft_instructions_k10_opus_distill_32k_multiturn/
+finetuning/prm_sft_r2egym_instructions_k10_opus_distill_32k_flattened/
+finetuning/prm_sft_r2egym_instructions_k10_opus_distill_32k_multiturn/
+finetuning/prm_sft_r2egym_instructions_k5_opus_distill_32k_multiturn/
+finetuning/prm_sft_r2egym_k5_opus_distill_32k_multiturn/
+
+# --- Large training data jsonl (GitHub 100MB limit) ---
 finetuning/prm_sft_*/prm_sft_train.jsonl
 finetuning/prm_sft_*/prm_sft_val.jsonl
 finetuning/eval_results*/*/responses.jsonl
 finetuning/eval_results*/*.jsonl
 
-# Root-level ad-hoc analysis files
-analyze_prm_*.py
-prm_failure_case_study.md
-prm_postprocessing_examples.md
-prm_trajectory_analysis.txt
-
-logs/
-/paper
-/paper-context
+# --- Local Claude recovery context ---
+CLAUDE_RESUME_CONTEXT.md
