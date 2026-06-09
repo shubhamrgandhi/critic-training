@@ -32,7 +32,7 @@ Sanity check: `conda activate critic-training && mini-extra swebench --help` →
 
 ### A. Run inference with the trained critic
 
-The critic is on Hugging Face: [`shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn`](https://huggingface.co/shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn).
+The critic is on Hugging Face: [`shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen`](https://huggingface.co/shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen).
 
 1. **Serve the critic** on Babel (1x L40S):
    ```bash
@@ -53,7 +53,7 @@ The critic is on Hugging Face: [`shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swe
    conda activate critic-training
    bash scripts/run_critic_max150.sh \
        prm_issue_res_instructions_step_aware 5 0 cwm \
-       --prm qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn \
+       --prm qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen \
        --prm-node <critic-vllm-node>:8071 \
        --agent-node <cwm-vllm-node> \
        --slice :400 \
@@ -81,8 +81,8 @@ cd ~/LlamaFactory && pip install -e ".[torch,metrics]" && cd -
 # Submit. Auto-resumes on walltime, pushes to HF on completion.
 cd finetuning/
 export DATA_DIR=$PWD/prm_sft_r2egym_swebench_instructions_k5_cwm_plus_qwen_opus_distill_32k_multiturn
-export OUTPUT_DIR=/data/user_data/$USER/saves/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn
-export HF_REPO_ID=<your-username>/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn
+export OUTPUT_DIR=/data/user_data/$USER/saves/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen
+export HF_REPO_ID=<your-username>/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen
 
 sbatch train_sbatch_resumable.sh
 ```

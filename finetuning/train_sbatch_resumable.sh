@@ -32,12 +32,12 @@ else
 fi
 
 SAVEDIR="${SAVEDIR:-/data/user_data/$USER/saves}"
-OUTPUT_DIR="${OUTPUT_DIR:-$SAVEDIR/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn}"
+OUTPUT_DIR="${OUTPUT_DIR:-$SAVEDIR/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen}"
 DONE_SENTINEL="$OUTPUT_DIR/TRAINING_COMPLETE"
 HF_PUSHED_SENTINEL="$OUTPUT_DIR/HF_PUSHED"
 # Default HF repo: same name as the local OUTPUT_DIR, matching prior pushed-model
 # convention (qwen3-8b-full-sft-prm-...). 96-char HF limit on org+name.
-HF_REPO_ID="${HF_REPO_ID:-shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn}"
+HF_REPO_ID="${HF_REPO_ID:-shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen}"
 
 export OUTPUT_DIR
 

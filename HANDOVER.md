@@ -80,7 +80,7 @@ critic-training/
 |---|---|
 | `/data/user_data/$USER/saves/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6-multiturn/` | Main multiturn critic checkpoint (read access opened) |
 | `/data/user_data/$USER/saves/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-opus-distill-32k-lr5e6-multiturn/` | Critic trained on instructions-style prompts (k=5) |
-| `/data/user_data/$USER/saves/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn/` | Critic trained on mixed CWM + Qwen3-Next-80B trajectories (current run) |
+| `/data/user_data/$USER/saves/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen/` | Critic trained on mixed CWM + Qwen3-Next-80B trajectories (current run) |
 | `/data/user_data/$USER/critic-training/results_singularity_max_150_steps_prefix/` | Headline eval result trees (the `results_singularity_max_150_steps_prefix` symlink in the repo root points here) |
 | `/data/user_data/$USER/critic-training/sif_cache/` | Pre-pulled SWE-bench apptainer/singularity images (`SWEBENCH_SIF_CACHE`) |
 | `$HOME/LlamaFactory/` | LlamaFactory checkout the SFT script invokes (`LLAMAFACTORY_DIR`) |
@@ -150,10 +150,10 @@ export HF_HOME=/data/user_data/$USER/huggingface_cache
 export SAVEDIR=/data/user_data/$USER/saves
 export LLAMAFACTORY_DIR=$HOME/LlamaFactory
 export DATA_DIR=$PWD/prm_sft_r2egym_swebench_instructions_k5_cwm_plus_qwen_opus_distill_32k_multiturn
-export OUTPUT_DIR=$SAVEDIR/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn
+export OUTPUT_DIR=$SAVEDIR/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen
 
 # (Optional) override the HF repo to push to (default matches the OUTPUT_DIR name above)
-export HF_REPO_ID=<your-username>/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn
+export HF_REPO_ID=<your-username>/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen
 
 # Submit. The script will pre-emptively chain a follow-up job with afterany dependency
 # so that if the first job hits walltime mid-step, the next job picks up from the latest
@@ -196,14 +196,14 @@ All three are also published on Hugging Face:
 
 | Local dir | HF dataset | Samples | Notes |
 |---|---|---|---|
-| `prm_sft_r2egym_swebench_k5_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-k5-opus-distill-32k-multiturn`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-k5-opus-distill-32k-multiturn) | 3,135 | k=5, **detailed** prompt (no `instructions`), R2E-Gym + SWE-bench Verified CWM rollouts critiqued by Opus 4.6 |
-| `prm_sft_r2egym_swebench_instructions_k5_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5-opus-distill-32k-multiturn`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5-opus-distill-32k-multiturn) | 4,532 | k=5, **concise** ("instructions") prompt. **Headline single-agent critic training data.** |
-| `prm_sft_r2egym_swebench_instructions_k5_cwm_plus_qwen_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-cwm-plus-qwen-k5-opus-distill-32k-multiturn`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-cwm-plus-qwen-k5-opus-distill-32k-multiturn) | 6,447 | k=5, concise prompt, mixed teacher trajectories (CWM + Qwen3-Next-80B-Instruct, 4,532 + 1,915) |
+| `prm_sft_r2egym_swebench_k5_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-k5`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-k5) | 3,135 | k=5, **detailed** prompt (no `instructions`), R2E-Gym + SWE-bench Verified CWM rollouts critiqued by Opus 4.6 |
+| `prm_sft_r2egym_swebench_instructions_k5_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5) | 4,532 | k=5, **concise** ("instructions") prompt. **Headline single-agent critic training data.** |
+| `prm_sft_r2egym_swebench_instructions_k5_cwm_plus_qwen_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-instructions-cwm-plus-qwen-k5`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-instructions-cwm-plus-qwen-k5) | 6,447 | k=5, concise prompt, mixed teacher trajectories (CWM + Qwen3-Next-80B-Instruct, 4,532 + 1,915) |
 
 If you don't have Babel filesystem access, fetch from HF instead:
 ```bash
 huggingface-cli download --repo-type dataset \
-    shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5-opus-distill-32k-multiturn \
+    shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5 \
     --local-dir finetuning/prm_sft_r2egym_swebench_instructions_k5_opus_distill_32k_multiturn
 ```
 

@@ -55,16 +55,16 @@ All three are also published on Hugging Face — fetch with `huggingface_hub.sna
 
 | Local dir | HF dataset | Description |
 |---|---|---|
-| `prm_sft_r2egym_swebench_k5_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-k5-opus-distill-32k-multiturn`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-k5-opus-distill-32k-multiturn) | k=5 intervention frequency, **detailed** prompt (no `instructions` style), R2E-Gym + SWE-bench Verified CWM rollouts critiqued by Opus 4.6. 3,135 samples. |
-| `prm_sft_r2egym_swebench_instructions_k5_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5-opus-distill-32k-multiturn`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5-opus-distill-32k-multiturn) | k=5, **concise** ("instructions") prompt. CWM-only rollouts. 4,532 samples. **Headline single-agent critic training data.** |
-| `prm_sft_r2egym_swebench_instructions_k5_cwm_plus_qwen_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-cwm-plus-qwen-k5-opus-distill-32k-multiturn`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-cwm-plus-qwen-k5-opus-distill-32k-multiturn) | k=5, concise prompt, mixed teacher trajectories (CWM + Qwen3-Next-80B-Instruct agents). 6,447 samples (4,532 CWM + 1,915 Qwen3-Next-80B). |
+| `prm_sft_r2egym_swebench_k5_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-k5`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-k5) | k=5 intervention frequency, **detailed** prompt (no `instructions` style), R2E-Gym + SWE-bench Verified CWM rollouts critiqued by Opus 4.6. 3,135 samples. |
+| `prm_sft_r2egym_swebench_instructions_k5_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5) | k=5, **concise** ("instructions") prompt. CWM-only rollouts. 4,532 samples. **Headline single-agent critic training data.** |
+| `prm_sft_r2egym_swebench_instructions_k5_cwm_plus_qwen_opus_distill_32k_multiturn/` | [`shubhamrgandhi/critic-sft-r2egym-swebench-instructions-cwm-plus-qwen-k5`](https://huggingface.co/datasets/shubhamrgandhi/critic-sft-r2egym-swebench-instructions-cwm-plus-qwen-k5) | k=5, concise prompt, mixed teacher trajectories (CWM + Qwen3-Next-80B-Instruct agents). 6,447 samples (4,532 CWM + 1,915 Qwen3-Next-80B). |
 
 Each contains `prm_sft_train.jsonl`, `dataset_info.json`, and a `metadata.json` with provenance. To use one for training, point `DATA_DIR` at it before running the launcher.
 
 To fetch from HF instead:
 ```bash
 huggingface-cli download --repo-type dataset \
-    shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5-opus-distill-32k-multiturn \
+    shubhamrgandhi/critic-sft-r2egym-swebench-instructions-k5 \
     --local-dir prm_sft_r2egym_swebench_instructions_k5_opus_distill_32k_multiturn
 ```
 
@@ -92,12 +92,12 @@ export DATA_DIR=$PWD/prm_sft_r2egym_swebench_instructions_k5_cwm_plus_qwen_opus_
 export HF_HOME=/data/user_data/$USER/huggingface_cache
 export SAVEDIR=/data/user_data/$USER/saves
 export LLAMAFACTORY_DIR=$HOME/LlamaFactory
-export OUTPUT_DIR=$SAVEDIR/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn
+export OUTPUT_DIR=$SAVEDIR/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen
 
 # (Optional) override the HF repo to push to on completion
-# (default: shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn)
+# (default: shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen)
 # HF caps repo_id at 96 chars total; keep your override under that.
-export HF_REPO_ID=<your-username>/qwen3-8b-full-sft-prm-r2egym-swebench-k5-cwm-plus-qwen-opus-distill-32k-multiturn
+export HF_REPO_ID=<your-username>/qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen
 
 # Submit. The wrapper pre-emptively chains the next sbatch with afterany dependency
 # so a walltime hit doesn't cost you progress; the chain stops once
