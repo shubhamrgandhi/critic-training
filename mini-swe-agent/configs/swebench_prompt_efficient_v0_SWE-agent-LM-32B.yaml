@@ -337,7 +337,7 @@ environment:
   environment_class: docker_edit_obs_final_only
 
 model:
-  litellm_model_registry: "/usr0/home/srgandhi/tool-overuse/mini-swe-agent/configs/litellm_model_registry.json"
+  litellm_model_registry: "../mini-swe-agent/configs/litellm_model_registry.json"
   model_name: "SWE-bench/SWE-agent-LM-32B"
   model_kwargs:
     custom_llm_provider: "openai"

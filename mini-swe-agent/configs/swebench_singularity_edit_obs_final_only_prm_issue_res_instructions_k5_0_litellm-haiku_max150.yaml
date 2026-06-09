@@ -1,83 +1,32 @@
 agent:
-  action_observation_template: '<returncode>{{output.returncode}}</returncode>
+  system_template: 'You are a helpful assistant that can interact multiple times with
+    a computer shell to solve programming tasks.
 
-    {% if output.output | length < 10000 -%}
-
-    <output>
-
-    {{ output.output -}}
-
-    </output>
-
-    {%- else -%}
-
-    <warning>
-
-    The output of your last command was too long.
-
-    Please try a different command that produces less output.
-
-    If you''re looking at a file you can try use head, tail or sed to view a smaller
-    number of lines selectively.
-
-    If you''re using grep or find and it produced too much output, you can use a more
-    selective search pattern.
-
-    If you really need to see something from the full command''s output, you can redirect
-    output to a file and then search in that file.
-
-    </warning>
-
-    {%- set elided_chars = output.output | length - 10000 -%}
-
-    <output_head>
-
-    {{ output.output[:5000] }}
-
-    </output_head>
-
-    <elided_chars>
-
-    {{ elided_chars }} characters elided
-
-    </elided_chars>
-
-    <output_tail>
-
-    {{ output.output[-5000:] }}
-
-    </output_tail>
-
-    {%- endif -%}
-
-    '
-  cost_limit: 6.0
-  format_error_template: 'Please always provide EXACTLY ONE action in triple backticks,
-    found {{actions|length}} actions.
+    Your response must contain exactly ONE bash code block with ONE command (or commands
+    connected with && or ||).
 
 
-    Please format your action in triple backticks as shown in <response_example>.
+    Include a THOUGHT section before your command where you explain your reasoning
+    process.
+
+    Format your response as shown in <format_example>.
 
 
-    <response_example>
+    <format_example>
 
-    Here are some thoughts about why you want to perform the action.
+    THOUGHT: Your reasoning and analysis here
 
 
     ```bash
 
-    <action>
+    your_command_here
 
     ```
 
-    </response_example>
+    </format_example>
 
 
-    If you have completed your assignment, please consult the first message about
-    how to
-
-    submit your solution (you will not be able to continue working on this task after
-    that).
+    Failure to follow these rules will cause your response to be rejected.
 
     '
   instance_template: '<pr_description>
@@ -356,7 +305,7 @@ agent:
 
     ```bash
 
-    echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && git add -A -- . ':(exclude).venv' ':(exclude)venv' ':(exclude)__pycache__' && git diff --cached
+    echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT && git add -A && git diff --cached
 
     ```
 
@@ -369,6 +318,89 @@ agent:
     </instructions>
 
     '
+  action_observation_template: '<returncode>{{output.returncode}}</returncode>
+
+    {% if output.output | length < 10000 -%}
+
+    <output>
+
+    {{ output.output -}}
+
+    </output>
+
+    {%- else -%}
+
+    <warning>
+
+    The output of your last command was too long.
+
+    Please try a different command that produces less output.
+
+    If you''re looking at a file you can try use head, tail or sed to view a smaller
+    number of lines selectively.
+
+    If you''re using grep or find and it produced too much output, you can use a more
+    selective search pattern.
+
+    If you really need to see something from the full command''s output, you can redirect
+    output to a file and then search in that file.
+
+    </warning>
+
+    {%- set elided_chars = output.output | length - 10000 -%}
+
+    <output_head>
+
+    {{ output.output[:5000] }}
+
+    </output_head>
+
+    <elided_chars>
+
+    {{ elided_chars }} characters elided
+
+    </elided_chars>
+
+    <output_tail>
+
+    {{ output.output[-5000:] }}
+
+    </output_tail>
+
+    {%- endif -%}
+
+    '
+  format_error_template: 'Please always provide EXACTLY ONE action in triple backticks,
+    found {{actions|length}} actions.
+
+
+    Please format your action in triple backticks as shown in <response_example>.
+
+
+    <response_example>
+
+    Here are some thoughts about why you want to perform the action.
+
+
+    ```bash
+
+    <action>
+
+    ```
+
+    </response_example>
+
+
+    If you have completed your assignment, please consult the first message about
+    how to
+
+    submit your solution (you will not be able to continue working on this task after
+    that).
+
+    '
+  step_limit: 30
+  cost_limit: 6.0
+  use_prm: true
   prm_interval: 5
   prm_template: 'You are a supervisor monitoring an LLM-based coding agent. Your role
     is to detect trajectory-level errors and provide corrective guidance to prevent
@@ -382,97 +414,96 @@ agent:
     EXACTLY ONE final submission command; it is ALWAYS essential.
 
 
-    SPECIFICATION ERRORS (System Design Issues)
+    IMPORTANT RULES:
+
+    - Respond ONLY with analytical feedback in the format below. Never generate bash
+    commands, code blocks, or simulated agent/environment output.
+
+    - Be CONSERVATIVE. Default to "On track" unless you see clear evidence of a problem.
+    The agent is competent — let it work. Unnecessary interventions cause the agent
+    to second-guess itself and loop, which is worse than a slow but steady trajectory.
+
+    - Use "Critical intervention required" ONLY for: (1) source file is corrupted/broken
+    by a bad edit, or (2) agent has repeated the exact same action 3+ times with no
+    progress. Most other issues are "Needs correction" at worst.
+
+    - NEVER suggest specific technical approaches, code changes, or where in the code
+    to look. The agent understands the codebase better than you. If the agent''s approach
+    seems wrong, say so, but do NOT suggest an alternative — let the agent decide.
+
+    - If the agent has applied a fix and verified it works, tell it to submit immediately.
+
+    - Keep your response SHORT. 1-2 sentences per detected error. 1-2 sentences for
+    OVERALL_GUIDANCE. Long feedback is counterproductive.
+
+
+    SPECIFICATION ERRORS:
 
 
     1. Task Specification Violations
 
     Definition: Agent fails to adhere to task constraints or requirements
 
-    Recovery: Redirect agent to original task requirements
-
 
     2. Role Specification Violations
 
     Definition: Agent behaves outside its defined role/responsibilities
-
-    Recovery: Remind agent of its specific role and boundaries
 
 
     3. Step Repetition
 
     Definition: Unnecessary repetition of completed steps or actions
 
-    Recovery: Acknowledge completed work and guide to next logical step
-
 
     4. Termination Condition Unawareness
 
     Definition: Agent continues working when task completion criteria are met
 
-    Recovery: Signal completion criteria and instruct to finalize
 
-
-    REASONING ERRORS (Decision Making Issues)
+    REASONING ERRORS:
 
 
     5. Problem Misidentification
 
     Definition: Agent misunderstands the core problem or current subtask
 
-    Recovery: Clarify the actual problem and expected approach
-
 
     6. Tool Selection Errors
 
     Definition: Agent uses inappropriate tools for the current task
-
-    Recovery: Suggest correct tools and explain their appropriate usage
 
 
     7. Hallucinations
 
     Definition: Agent generates false information or fabricates tool outputs
 
-    Recovery: Request verification of claims against actual evidence
-
 
     8. Information Processing Failures
 
     Definition: Poor retrieval of relevant information or misinterpretation
 
-    Recovery: Guide agent to correct information sources and interpretation
 
-
-    COORDINATION ERRORS (Process Management Issues)
+    COORDINATION ERRORS:
 
 
     9. Task Derailment
 
     Definition: Agent deviates from intended objective or loses focus
 
-    Recovery: Realign agent with original objectives and priorities
-
 
     10. Goal Deviation
 
     Definition: Agent pursues goals that don''t serve the main objective
-
-    Recovery: Refocus on primary goals and expected outcomes
 
 
     11. Context Handling Failures
 
     Definition: Agent loses important context or forgets previous findings
 
-    Recovery: Provide context summary and key information recap
-
 
     12. Verification Failures
 
     Definition: Inadequate checking of work quality or correctness
-
-    Recovery: Instruct specific verification steps and quality checks
 
 
     =====================================================
@@ -486,19 +517,20 @@ agent:
 
     DETECTED: Yes/No
 
-    EVIDENCE: Specific quote or observation from trace (if detected)
+    EVIDENCE: (if detected) One sentence.
 
-    RECOVERY_ACTION: Specific instruction to correct the error (if detected)
+    RECOVERY_ACTION: (if detected) One sentence. No code, no commands.
 
 
     Then provide:
 
-    TASK_STATUS: On track / Needs correction / Critical intervention required
+    TASK_STATUS: Exactly one of: "On track" / "Needs correction" / "Critical intervention
+    required"
 
-    OVERALL_GUIDANCE: Detailed and specific guidance for the agent
+    OVERALL_GUIDANCE: 1-2 sentences only.
 
 
-    Example Response Structure
+    EXAMPLE:
 
 
     SPECIFICATION ERRORS:
@@ -509,10 +541,9 @@ agent:
 
     3. Step Repetition: DETECTED: Yes
 
-    EVIDENCE: "Agent ran the same test command three times: ''pytest test_file.py''"
+    EVIDENCE: Agent ran the same test command three times with identical results.
 
-    RECOVERY_ACTION: "The test has already been executed successfully. Proceed to
-    analyze the results and move to the next development step."
+    RECOVERY_ACTION: Stop repeating and analyze the existing test output.
 
     4. Termination Condition Unawareness: DETECTED: No
 
@@ -521,13 +552,7 @@ agent:
 
     5. Problem Misidentification: DETECTED: No
 
-    6. Tool Selection Errors: DETECTED: Yes
-
-    EVIDENCE: "Agent used text editor to run Python code instead of using the Python
-    interpreter"
-
-    RECOVERY_ACTION: "Use the Python interpreter tool for code execution. The text
-    editor is for viewing and modifying files only."
+    6. Tool Selection Errors: DETECTED: No
 
     7. Hallucinations: DETECTED: No
 
@@ -547,104 +572,41 @@ agent:
 
     TASK_STATUS: Needs correction
 
-    OVERALL_GUIDANCE: You are repeating actions unnecessarily and using incorrect
-    tools. Specifically:
-
-    1. Stop running the same test command repeatedly - the test ''pytest test_file.py''
-    has already been executed successfully three times with the same result
-
-    2. Use the Python interpreter tool for executing Python code, not the text editor
-    which is only for viewing and modifying files
-
-    3. Now focus on analyzing the test results you already obtained to determine what
-    the next development step should be
-
-    4. Review the test output to identify any failing tests or areas that need improvement
-
-    5. If all tests are passing, proceed to verify your implementation meets the original
-    requirements before considering the task complete
-
-
-    =====================================================
-
-    INSTRUCTIONS
-
-    =====================================================
-
-
-    1. Focus on errors that can be corrected through guidance
-
-    2. Provide specific, actionable recovery instructions
-
-    3. Be concise but precise in evidence citations
-
-    4. Only mark "DETECTED: Yes" if you have clear evidence
-
-    5. Prioritize errors that most threaten task completion
+    OVERALL_GUIDANCE: You are repeating the same test. Analyze the output you already
+    have and proceed to the next step.
 
 
     Now review the agent''s trajectory and provide your supervisor feedback.
 
     '
-  step_limit: 150
-  system_template: 'You are a helpful assistant that can interact multiple times with
-    a computer shell to solve programming tasks.
-
-    Your response must contain exactly ONE bash code block with ONE command (or commands
-    connected with && or ||).
-
-
-    Include a THOUGHT section before your command where you explain your reasoning
-    process.
-
-    Format your response as shown in <format_example>.
-
-
-    <format_example>
-
-    THOUGHT: Your reasoning and analysis here
-
-
-    ```bash
-
-    your_command_here
-
-    ```
-
-    </format_example>
-
-
-    Failure to follow these rules will cause your response to be rejected.
-
-    '
-  use_prm: true
 environment:
   cwd: /testbed
+  timeout: 60
   env:
-    LESS: -R
-    MANPAGER: cat
     PAGER: cat
+    MANPAGER: cat
+    LESS: -R
     PIP_PROGRESS_BAR: 'off'
     TQDM_DISABLE: '1'
   environment_class: singularity_edit_obs_final_only
-  timeout: 60
 model:
   litellm_model_registry: "../mini-swe-agent/configs/litellm_model_registry.json"
+  model_name: us.anthropic.claude-haiku-4-5-20251001-v1:0
   model_kwargs:
-    api_base: http://localhost:8070/v1
     custom_llm_provider: openai
-    drop_params: true
-    max_tokens: 2048
-    n: 1
+    api_base: http://127.0.0.1:8765/v1
+    api_key: dummy-proxy-strips-this
     temperature: 0.0
-    top_k: -1
-    top_p: 1.0
-  model_name: facebook/cwm
+    n: 1
+    max_tokens: 4096
+    drop_params: true
 prm_model:
+  model_name: us.anthropic.claude-haiku-4-5-20251001-v1:0
   model_kwargs:
-    custom_llm_provider: bedrock
-    drop_params: true
-    max_completion_tokens: 4096
-    n: 1
+    custom_llm_provider: openai
+    api_base: http://127.0.0.1:8765/v1
+    api_key: dummy-proxy-strips-this
     temperature: 0.0
-  model_name: us.anthropic.claude-opus-4-6-v1
+    n: 1
+    max_completion_tokens: 4096
+    drop_params: true

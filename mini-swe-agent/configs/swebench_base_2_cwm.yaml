@@ -223,7 +223,7 @@ environment:
   environment_class: docker
 
 model:
-  litellm_model_registry: "/usr0/home/srgandhi/tool-overuse/mini-swe-agent/configs/litellm_model_registry.json"
+  litellm_model_registry: "../mini-swe-agent/configs/litellm_model_registry.json"
   model_name: "facebook/cwm"
   model_kwargs:
     custom_llm_provider: "openai"
