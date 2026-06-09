@@ -6,9 +6,8 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --gres=gpu:L40S:8
 #SBATCH --mem=400G
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=srgandhi@andrew.cmu.edu
-#SBATCH --exclude="babel-q9-28,babel-q5-24"
+# Add your own --mail-user / --mail-type / --exclude lines here if you want
+# SLURM email notifications or want to exclude flaky nodes.
 
 mkdir -p sbatch_logs
 
@@ -18,5 +17,5 @@ echo "Node: $(hostname)"
 echo "GPUs: $CUDA_VISIBLE_DEVICES"
 echo ""
 
-# Run the training script
-bash /home/srgandhi/tool-overuse/finetuning/run_qwen3_8b_prm_full_sft_l40s.sh
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "$SCRIPT_DIR/run_qwen3_8b_prm_full_sft_l40s.sh"

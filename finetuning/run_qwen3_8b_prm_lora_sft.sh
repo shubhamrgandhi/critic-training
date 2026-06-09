@@ -3,13 +3,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Configurable paths (override via environment variables)
-export HF_HOME="${HF_HOME:-/data/user_data/srgandhi/huggingface_cache}"
-SAVEDIR="${SAVEDIR:-/data/user_data/srgandhi/saves}"
+# Configurable paths (override via environment variables before running).
+export HF_HOME="${HF_HOME:-/data/user_data/$USER/huggingface_cache}"
+SAVEDIR="${SAVEDIR:-/data/user_data/$USER/saves}"
 LOGDIR="$SAVEDIR/logs"
-LLAMAFACTORY_DIR="${LLAMAFACTORY_DIR:-/home/srgandhi/LlamaFactory}"
-export DATA_DIR="${DATA_DIR:-$SCRIPT_DIR/prm_sft_data_opus_distill_full_feedback_history}"
-export OUTPUT_DIR="$SAVEDIR/qwen3-8b-lora-sft-prm-opus-distill"
+LLAMAFACTORY_DIR="${LLAMAFACTORY_DIR:-$HOME/LlamaFactory}"
+export DATA_DIR="${DATA_DIR:-$SCRIPT_DIR/prm_sft_r2egym_swebench_instructions_k5_opus_distill_32k_multiturn}"
+export OUTPUT_DIR="${OUTPUT_DIR:-$SAVEDIR/qwen3-8b-lora-sft-prm-opus-distill}"
 mkdir -p "$LOGDIR" "$OUTPUT_DIR"
 
 echo "=== Qwen3-8B QLoRA SFT for PRM ==="

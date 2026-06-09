@@ -1,11 +1,11 @@
 {
   "source_results_dirs": [
-    "/home/srgandhi/tool-overuse/results_r2egym_swebench/singularity_edit_obs_final_only_prm_issue_res_instructions_k5_0_cwm_prm_claude-opus-4-6",
-    "/home/srgandhi/tool-overuse/results_r2egym_swebench/singularity_edit_obs_final_only_prm_issue_res_instructions_k5_0_qwen3-80b_prm_claude-opus-4-6"
+    "<repo_root>/results_r2egym_swebench/singularity_edit_obs_final_only_prm_issue_res_instructions_k5_0_cwm_prm_claude-opus-4-6",
+    "<repo_root>/results_r2egym_swebench/singularity_edit_obs_final_only_prm_issue_res_instructions_k5_0_qwen3-80b_prm_claude-opus-4-6"
   ],
   "agent_models": [
     "facebook/cwm",
-    "Qwen/Qwen3-Coder-30B-A3B"
+    "Qwen/Qwen3-Next-80B-A3B-Instruct"
   ],
   "prm_model": "us.anthropic.claude-opus-4-6-v1",
   "prm_interval": 5,

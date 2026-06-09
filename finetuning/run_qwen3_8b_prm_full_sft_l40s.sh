@@ -10,14 +10,16 @@ if [[ "$FORMAT" != "flattened" && "$FORMAT" != "multiturn" ]]; then
     exit 1
 fi
 
-# Configurable paths (override via environment variables)
-export HF_HOME="${HF_HOME:-/data/user_data/srgandhi/huggingface_cache}"
+# Configurable paths (override via environment variables before submitting).
+# Defaults assume Babel-style /data/user_data/$USER layout and a LlamaFactory
+# checkout at $HOME/LlamaFactory; override any of these if your layout differs.
+export HF_HOME="${HF_HOME:-/data/user_data/$USER/huggingface_cache}"
 export HF_HUB_CACHE="${HF_HOME}/hub"
 export HUGGINGFACE_HUB_CACHE="${HF_HOME}/hub"
-SAVEDIR="${SAVEDIR:-/data/user_data/srgandhi/saves}"
+SAVEDIR="${SAVEDIR:-/data/user_data/$USER/saves}"
 LOGDIR="$SAVEDIR/logs"
-LLAMAFACTORY_DIR="${LLAMAFACTORY_DIR:-/home/srgandhi/LlamaFactory}"
-export DATA_DIR="${DATA_DIR:-$SCRIPT_DIR/prm_sft_data_opus_distill_full_feedback_history_32k}"
+LLAMAFACTORY_DIR="${LLAMAFACTORY_DIR:-$HOME/LlamaFactory}"
+export DATA_DIR="${DATA_DIR:-$SCRIPT_DIR/prm_sft_r2egym_swebench_instructions_k5_opus_distill_32k_multiturn}"
 export OUTPUT_DIR="${OUTPUT_DIR:-$SAVEDIR/qwen3-8b-full-sft-prm-opus-distill-32k-lr5e6-${FORMAT}}"
 # Avoid NFS lock contention for Triton autotune cache
 export TRITON_CACHE_DIR="/tmp/triton_cache_$$"
