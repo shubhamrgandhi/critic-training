@@ -56,7 +56,7 @@ The critic is on Hugging Face: [`shubhamrgandhi/qwen3-8b-full-sft-prm-r2egym-swe
        --prm qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-cwm-plus-qwen \
        --prm-node <critic-vllm-node>:8071 \
        --agent-node <cwm-vllm-node> \
-       --slice :400 \
+       --slice :500 \
        --prefix-dir /data/user_data/$USER/critic-training/results_singularity_max_150_steps_prefix/singularity_edit_obs_final_only_0_cwm
    ```
 5. **Compute headline numbers**:

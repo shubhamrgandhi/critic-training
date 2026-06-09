@@ -275,7 +275,7 @@ bash scripts/run_critic_max150.sh \
   5 0 cwm \
   --prm qwen3-8b-full-sft-prm-r2egym-swebench-instructions-k5-opus-distill-32k-lr5e6-multiturn \
   --prm-node <node:port> \
-  --slice :400 \
+  --slice :500 \
   --prefix-dir /data/user_data/$USER/critic-training/results_singularity_max_150_steps_prefix/singularity_edit_obs_final_only_0_cwm
 ```
 
