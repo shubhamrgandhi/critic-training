@@ -12,6 +12,8 @@ The repo assumes you have:
 
 **No AWS / Bedrock account required.** The reproduction path uses the CMU LiteLLM gateway for any externally-served models. See [§5 — Run an eval](#5-run-an-eval) for the LiteLLM template config.
 
+**Released artifacts:** the trained critic and three SFT training datasets are grouped on Hugging Face under the [Critic Training for Code Agents](https://huggingface.co/collections/shubhamrgandhi/critic-training-for-code-agents-6a27adf94c9409f0db710fee) collection.
+
 > Naming note: the trained model is referred to as the "critic" throughout this guide. Many filenames, output directories, and YAML keys still contain `prm`/`PRM` (process reward model — the same concept). Saved-checkpoint and dataset directory names are not renamed since recipients may already have references to those paths. New scripts/orchestration use `critic`.
 
 ---
